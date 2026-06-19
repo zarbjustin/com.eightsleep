@@ -116,3 +116,34 @@ test('a single-occupant bed yields one solo side', async () => {
   assert.strictEqual(sides.length, 1);
   assert.strictEqual(sides[0].side, 'solo');
 });
+
+test('setSideLevel PUTs a clamped integer currentLevel', async () => {
+  let captured = null;
+  const { client } = makeClient((url, init) => {
+    if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
+    if (url.includes('/temperature')) { captured = init; return Promise.resolve(okJson({})); }
+    return Promise.resolve(okJson({}));
+  });
+
+  await client.setSideLevel('u1', 250.7);
+  assert.strictEqual(captured.method, 'put');
+  assert.deepStrictEqual(JSON.parse(captured.body), { currentLevel: 100 });
+});
+
+test('setSidePower PUTs smart when on and off when off', async () => {
+  const bodies = [];
+  const { client } = makeClient((url, init) => {
+    if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
+    if (url.includes('/temperature')) { bodies.push(JSON.parse(init.body)); return Promise.resolve(okJson({})); }
+    return Promise.resolve(okJson({}));
+  });
+
+  await client.setSidePower('u1', true);
+  await client.setSidePower('u1', false);
+  assert.deepStrictEqual(bodies, [
+    { currentState: { type: 'smart' } },
+    { currentState: { type: 'off' } },
+  ]);
+});

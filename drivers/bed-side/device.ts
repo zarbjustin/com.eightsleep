@@ -2,6 +2,7 @@
 
 import Homey from 'homey';
 import { createClient, EightSleepClient } from '../../lib/EightSleepClient';
+import { celsiusToLevel, levelToCelsius } from '../../lib/temperature';
 
 interface BedSideStore {
   deviceId: string;
@@ -22,6 +23,10 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
     this.registerCapabilityListener('onoff', async (value: boolean) => {
       await this.client.setSidePower(this.userId(), value);
+    });
+
+    this.registerCapabilityListener('target_temperature', async (value: number) => {
+      await this.client.setSideLevel(this.userId(), celsiusToLevel(value));
     });
 
     await this.refresh();
@@ -46,6 +51,7 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
     try {
       const state = await this.client.getSideState(this.userId());
       await this.setCapabilityValue('onoff', state.isOn);
+      await this.setCapabilityValue('target_temperature', levelToCelsius(state.currentLevel));
       if (!this.getAvailable()) await this.setAvailable();
     } catch (err) {
       this.error('Failed to refresh Eight Sleep state', err);

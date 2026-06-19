@@ -264,6 +264,14 @@ export class EightSleepClient {
     });
   }
 
+  /** Set a side's raw heating level (-100..100). */
+  async setSideLevel(userId: string, level: number): Promise<void> {
+    const clamped = Math.max(-100, Math.min(100, Math.round(level)));
+    await this.apiRequest('put', `${APP_API_URL}v1/users/${userId}/temperature`, {
+      currentLevel: clamped,
+    });
+  }
+
   private async safeText(res: FetchResponse): Promise<string> {
     try {
       return await res.text();
