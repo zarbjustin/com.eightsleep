@@ -568,6 +568,27 @@ export class EightSleepClient {
     });
   }
 
+  /** Average sleep scores over the returned trend window (ignoring still-processing days). */
+  async getWeeklyAverages(userId: string, opts: { tz: string; from: string; to: string }): Promise<{
+    fitness: number | null; quality: number | null; routine: number | null; hours: number | null; days: number;
+  }> {
+    const days = (await this.getTrends(userId, opts)).filter((d) => d.processing !== true);
+    const nums = (sel: (d: TrendDay) => unknown): number[] => days
+      .map(sel)
+      .map((v) => Number(v))
+      .filter((v) => Number.isFinite(v));
+    const avg = (vals: number[]): number | null => (vals.length
+      ? Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10 : null);
+    const hours = nums((d) => d.sleepDuration).map((s) => s / 3600);
+    return {
+      fitness: avg(nums((d) => d.score)),
+      quality: avg(nums((d) => d.sleepQualityScore?.total)),
+      routine: avg(nums((d) => d.sleepRoutineScore?.total)),
+      hours: avg(hours),
+      days: days.length,
+    };
+  }
+
   private async safeText(res: FetchResponse): Promise<string> {
     try {
       return await res.text();

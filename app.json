@@ -280,6 +280,53 @@
             "filter": "driver_id=bed-side"
           }
         ]
+      },
+      {
+        "id": "weekly_summary",
+        "title": {
+          "en": "Daily sleep summary (7-day averages)"
+        },
+        "tokens": [
+          {
+            "name": "avg_fitness",
+            "type": "number",
+            "title": {
+              "en": "Avg fitness score"
+            },
+            "example": 80
+          },
+          {
+            "name": "avg_quality",
+            "type": "number",
+            "title": {
+              "en": "Avg quality score"
+            },
+            "example": 85
+          },
+          {
+            "name": "avg_routine",
+            "type": "number",
+            "title": {
+              "en": "Avg routine score"
+            },
+            "example": 75
+          },
+          {
+            "name": "avg_hours",
+            "type": "number",
+            "title": {
+              "en": "Avg hours slept"
+            },
+            "example": 7.4
+          }
+        ],
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          }
+        ]
       }
     ],
     "conditions": [
@@ -945,6 +992,17 @@
       "uiComponent": "sensor",
       "insights": true
     },
+    "sleep_fitness_weekly": {
+      "type": "number",
+      "title": {
+        "en": "Sleep fitness (7-day avg)"
+      },
+      "decimals": 1,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true
+    },
     "sleep_quality_score": {
       "type": "number",
       "title": {
@@ -975,7 +1033,7 @@
       "getable": true,
       "setable": false,
       "uiComponent": "sensor",
-      "insights": false
+      "insights": true
     },
     "time_slept": {
       "type": "number",

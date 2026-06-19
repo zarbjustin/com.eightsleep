@@ -50,7 +50,7 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
     'onoff', 'target_temperature', 'measure_temperature', 'measure_temperature.room',
     'alarm_presence', 'measure_heart_rate', 'measure_hrv', 'measure_breath_rate',
     'sleep_stage', 'sleep_fitness_score', 'sleep_quality_score', 'sleep_routine_score', 'time_slept',
-    'next_alarm', 'away_mode', 'alarm_water_low', 'is_priming',
+    'next_alarm', 'away_mode', 'alarm_water_low', 'is_priming', 'sleep_fitness_weekly',
     'button.alarm_snooze', 'button.alarm_stop', 'button.prime',
   ];
 
@@ -162,6 +162,11 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
       } catch (err) {
         this.error('Failed to refresh Eight Sleep base', err);
       }
+      try {
+        await this.maybeWeeklySummary();
+      } catch (err) {
+        this.error('Failed to compute Eight Sleep weekly summary', err);
+      }
     }
 
     this.failures = reachable ? 0 : this.failures + 1;
@@ -219,6 +224,35 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
   private async fire(card: string, tokens: Record<string, unknown>): Promise<void> {
     await this.homey.flow.getDeviceTriggerCard(card).trigger(this, tokens, {})
       .catch((e) => this.error(`trigger ${card}`, e));
+  }
+
+  /** Once per local day, compute 7-day score averages and fire a summary. */
+  private async maybeWeeklySummary(): Promise<void> {
+    const today = new Date().toISOString().slice(0, 10);
+    const prev = this.getStoreValue('lastSummaryDate');
+    if (prev === today) return;
+
+    const tz = this.homey.clock.getTimezone();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const now = Date.now();
+    const fmt = (d: Date): string => d.toISOString().slice(0, 10);
+    const avg = await this.client.getWeeklyAverages(this.userId(), {
+      tz,
+      from: fmt(new Date(now - 7 * dayMs)),
+      to: fmt(new Date(now + dayMs)),
+    });
+
+    await this.setStoreValue('lastSummaryDate', today).catch(() => undefined);
+    await this.setCapabilityValue('sleep_fitness_weekly', avg.fitness).catch(() => undefined);
+
+    if (prev) {
+      await this.fire('weekly_summary', {
+        avg_fitness: avg.fitness ?? 0,
+        avg_quality: avg.quality ?? 0,
+        avg_routine: avg.routine ?? 0,
+        avg_hours: avg.hours ?? 0,
+      });
+    }
   }
 
   private async refreshDeviceStatus(
@@ -460,6 +494,7 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
   getWidgetState(): {
     name: string; on: boolean; target: number | null; bedTemp: number | null;
     presence: boolean; heartRate: number | null; stage: string | null;
+    nextAlarm: string | null; away: boolean; waterLow: boolean;
     } {
     return {
       name: this.getName(),
@@ -469,6 +504,9 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
       presence: this.getCapabilityValue('alarm_presence') === true,
       heartRate: this.getCapabilityValue('measure_heart_rate') ?? null,
       stage: this.getCapabilityValue('sleep_stage') ?? null,
+      nextAlarm: this.getCapabilityValue('next_alarm') ?? null,
+      away: this.getCapabilityValue('away_mode') === true,
+      waterLow: this.getCapabilityValue('alarm_water_low') === true,
     };
   }
 

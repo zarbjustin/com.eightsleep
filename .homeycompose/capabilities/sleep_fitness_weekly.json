@@ -1,8 +1,9 @@
 {
-  "type": "string",
+  "type": "number",
   "title": {
-    "en": "Sleep stage"
+    "en": "Sleep fitness (7-day avg)"
   },
+  "decimals": 1,
   "getable": true,
   "setable": false,
   "uiComponent": "sensor",

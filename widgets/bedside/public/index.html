@@ -31,6 +31,13 @@
     .temp button:active { background: #1d3a57; }
     .stats { display: flex; justify-content: space-around; font-size: 12px; color: #9fb4c9; }
     .stats b { display: block; color: #E8EEF4; font-size: 16px; }
+    .badges { display: flex; gap: 6px; justify-content: center; min-height: 18px; flex-wrap: wrap; }
+    .badge {
+      font-size: 11px; padding: 2px 8px; border-radius: 10px;
+      background: #14283f; color: #9fb4c9; border: 1px solid #24405e;
+    }
+    .badge.warn { background: #5a2a1f; color: #f0b49b; border-color: #7a3a2a; }
+    .badge.alarm { background: #1f3a5a; color: #9bc4f0; border-color: #2a4a7a; }
     .power {
       border: none; border-radius: 10px; padding: 9px; font-size: 14px; font-weight: 600;
       cursor: pointer; background: #24405e; color: #E8EEF4;
@@ -58,6 +65,8 @@
       <div>Stage<b id="stage">—</b></div>
     </div>
 
+    <div class="badges" id="badges"></div>
+
     <button class="power" id="power" type="button">Power</button>
   </div>
 
@@ -78,6 +87,18 @@
         const power = el('power');
         power.classList.toggle('on', !!state.on);
         power.textContent = state.on ? 'On' : 'Off';
+
+        const badges = el('badges');
+        badges.innerHTML = '';
+        const add = (text, cls) => {
+          const b = document.createElement('span');
+          b.className = 'badge' + (cls ? ' ' + cls : '');
+          b.textContent = text;
+          badges.appendChild(b);
+        };
+        if (state.nextAlarm) add('⏰ ' + state.nextAlarm, 'alarm');
+        if (state.away) add('Away');
+        if (state.waterLow) add('Water low', 'warn');
       }
 
       async function load(id) {
@@ -85,7 +106,10 @@
           state = await Homey.api('GET', '/state' + (id ? ('?id=' + encodeURIComponent(id)) : ''));
           currentId = state.id;
           render();
-        } catch (e) { el('presenceLabel').textContent = 'Unavailable'; }
+        } catch (e) {
+          el('presenceLabel').textContent = 'Unavailable';
+          el('badges').innerHTML = '<span class="badge warn">Unavailable</span>';
+        }
       }
 
       async function setTemp(delta) {

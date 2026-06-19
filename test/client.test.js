@@ -325,3 +325,26 @@ test('getDeviceStatus normalises water, priming and away occupants', async () =>
   assert.strictEqual(s.needsPriming, true);
   assert.deepStrictEqual(s.awayUserIds, ['u1']);
 });
+
+test('getWeeklyAverages averages finished days and ignores processing ones', async () => {
+  const trends = {
+    days: [
+      { score: 80, sleepDuration: 25200, sleepQualityScore: { total: 90 }, sleepRoutineScore: { total: 70 } },
+      { score: 90, sleepDuration: 28800, sleepQualityScore: { total: 80 }, sleepRoutineScore: { total: 80 } },
+      { processing: true, score: 0, sleepDuration: 0 },
+    ],
+  };
+  const { client } = makeClient((url) => {
+    if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
+    if (url.includes('/trends')) return Promise.resolve(okJson(trends));
+    return Promise.resolve(okJson({}));
+  });
+
+  const a = await client.getWeeklyAverages('u1', { tz: 'UTC', from: '2026-06-13', to: '2026-06-20' });
+  assert.strictEqual(a.days, 2);
+  assert.strictEqual(a.fitness, 85);
+  assert.strictEqual(a.quality, 85);
+  assert.strictEqual(a.routine, 75);
+  assert.strictEqual(a.hours, 7.5);
+});
