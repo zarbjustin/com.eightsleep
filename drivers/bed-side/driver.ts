@@ -18,6 +18,9 @@ interface BedSideDevice extends Homey.Device {
   flowSetOneOffAlarm(time: string): Promise<void>;
   flowSetAway(on: boolean): Promise<void>;
   flowPrime(): Promise<void>;
+  flowSetBasePreset(preset: string): Promise<void>;
+  flowSetHeadAngle(angle: number): Promise<void>;
+  flowSetFeetAngle(angle: number): Promise<void>;
   isPresent(): boolean;
   isSideOn(): boolean;
   isAway(): boolean;
@@ -86,6 +89,21 @@ module.exports = class EightSleepBedSideDriver extends Homey.Driver {
     this.homey.flow.getActionCard('prime_pod')
       .registerRunListener(async ({ device }: FlowArgs<unknown>) => {
         await device.flowPrime();
+      });
+
+    this.homey.flow.getActionCard('set_base_preset')
+      .registerRunListener(async ({ device, preset }: FlowArgs<{ preset: string }>) => {
+        await device.flowSetBasePreset(preset);
+      });
+
+    this.homey.flow.getActionCard('set_head_angle')
+      .registerRunListener(async ({ device, angle }: FlowArgs<{ angle: number }>) => {
+        await device.flowSetHeadAngle(angle);
+      });
+
+    this.homey.flow.getActionCard('set_feet_angle')
+      .registerRunListener(async ({ device, angle }: FlowArgs<{ angle: number }>) => {
+        await device.flowSetFeetAngle(angle);
       });
 
     this.homey.flow.getActionCard('set_one_off_alarm')

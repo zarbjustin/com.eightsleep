@@ -3,6 +3,7 @@
 import Homey from 'homey';
 import { EightSleepClient } from '../../lib/EightSleepClient';
 import { celsiusToLevel, levelToCelsius } from '../../lib/temperature';
+import type { SideMetrics } from '../../lib/types';
 
 interface BedSideStore {
   deviceId: string;
@@ -28,6 +29,14 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
   private lastPresence: boolean | null = null;
 
   private lastStage: string | null = null;
+
+  private lastRinging: boolean | null = null;
+
+  private lastWaterLow: boolean | null = null;
+
+  private lastPriming: boolean | null = null;
+
+  private lastSnore: boolean | null = null;
 
   private baseBound = false;
 
@@ -180,17 +189,39 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
     await set('sleep_routine_score', m.sleepRoutineScore);
     await set('time_slept', m.timeSleptSeconds === null ? null : Math.round((m.timeSleptSeconds / 3600) * 10) / 10);
 
-    await this.fireStateTriggers(m.bedPresence, m.sleepStage);
+    await this.fireStateTriggers(m);
     await this.refreshNextAlarm(set);
     await this.refreshDeviceStatus(set);
+  }
+
+  /** Helper to fire a device trigger card, swallowing errors. */
+  private async fire(card: string, tokens: Record<string, unknown>): Promise<void> {
+    await this.homey.flow.getDeviceTriggerCard(card).trigger(this, tokens, {})
+      .catch((e) => this.error(`trigger ${card}`, e));
   }
 
   private async refreshDeviceStatus(
     set: (cap: string, value: number | boolean | string | null) => Promise<void>,
   ): Promise<void> {
     const status = await this.client.getDeviceStatus(this.deviceId());
-    await set('alarm_water_low', status.hasWater === null ? null : !status.hasWater);
+
+    const waterLow = status.hasWater === null ? null : !status.hasWater;
+    await set('alarm_water_low', waterLow);
+    if (waterLow !== null) {
+      if (this.lastWaterLow !== null && waterLow !== this.lastWaterLow) {
+        await this.fire(waterLow ? 'water_became_low' : 'water_refilled', {});
+      }
+      this.lastWaterLow = waterLow;
+    }
+
     await set('is_priming', status.isPriming);
+    if (status.isPriming !== null) {
+      if (this.lastPriming !== null && status.isPriming !== this.lastPriming) {
+        await this.fire(status.isPriming ? 'priming_started' : 'priming_finished', {});
+      }
+      this.lastPriming = status.isPriming;
+    }
+
     await set('away_mode', status.awayUserIds.includes(this.userId()));
   }
 
@@ -209,6 +240,11 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
     await set('base_feet_angle', base.legAngle);
     await set('base_snore_mitigation', base.snoreMitigation);
     if (base.preset) await set('base_preset', base.preset);
+
+    if (this.lastSnore !== null && base.snoreMitigation !== this.lastSnore) {
+      await this.fire(base.snoreMitigation ? 'snore_mitigation_started' : 'snore_mitigation_stopped', {});
+    }
+    this.lastSnore = base.snoreMitigation;
   }
 
   private async bindBaseCapabilities(): Promise<void> {
@@ -236,20 +272,33 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
     });
   }
 
-  private async fireStateTriggers(presence: boolean | null, stage: string | null): Promise<void> {
+  private async fireStateTriggers(m: SideMetrics): Promise<void> {
+    const presence = m.bedPresence;
     if (presence !== null && presence !== this.lastPresence) {
-      const card = presence ? 'presence_started' : 'presence_stopped';
       if (this.lastPresence !== null) {
-        await this.homey.flow.getDeviceTriggerCard(card).trigger(this, {}, {}).catch((e) => this.error('trigger', e));
+        if (presence) {
+          await this.fire('presence_started', {
+            bed_temperature: m.bedTemp ?? 0,
+            target_temperature: Number(this.getCapabilityValue('target_temperature') ?? 0),
+          });
+        } else {
+          await this.fire('presence_stopped', {});
+          await this.fire('sleep_session_ended', {
+            hours_slept: m.timeSleptSeconds === null ? 0 : Math.round((m.timeSleptSeconds / 3600) * 10) / 10,
+            fitness_score: m.sleepFitnessScore ?? 0,
+            quality_score: m.sleepQualityScore ?? 0,
+            routine_score: m.sleepRoutineScore ?? 0,
+          });
+        }
       }
       this.lastPresence = presence;
       await this.setStoreValue('lastPresence', presence).catch(() => undefined);
     }
 
+    const stage = m.sleepStage;
     if (stage !== null && stage !== this.lastStage) {
       if (this.lastStage !== null) {
-        await this.homey.flow.getDeviceTriggerCard('sleep_stage_changed')
-          .trigger(this, { stage }, {}).catch((e) => this.error('trigger', e));
+        await this.fire('sleep_stage_changed', { stage, previous_stage: this.lastStage });
       }
       this.lastStage = stage;
       await this.setStoreValue('lastStage', stage).catch(() => undefined);
@@ -261,6 +310,19 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
   ): Promise<void> {
     const alarm = await this.client.getNextAlarm(this.userId());
     this.nextAlarmId = alarm?.id ?? null;
+
+    // Detect ring start/stop for Flow.
+    const now = Date.now();
+    const start = alarm?.startTimestamp ? Date.parse(alarm.startTimestamp) : NaN;
+    const end = alarm?.endTimestamp ? Date.parse(alarm.endTimestamp) : NaN;
+    const ringing = !!alarm
+      && (alarm.snoozing === true
+        || (Number.isFinite(start) && Number.isFinite(end) && now >= start && now <= end));
+    if (this.lastRinging !== null && ringing !== this.lastRinging) {
+      if (ringing) await this.fire('alarm_ringing', { time: alarm?.time ?? '' });
+      else await this.fire('alarm_dismissed', {});
+    }
+    this.lastRinging = ringing;
 
     if (!alarm?.nextTimestamp) {
       await set('next_alarm', null);
@@ -329,6 +391,23 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
   async flowPrime(): Promise<void> {
     await this.client.primePod(this.deviceId(), this.userId());
+  }
+
+  async flowSetBasePreset(preset: string): Promise<void> {
+    await this.client.setBasePreset(this.userId(), this.deviceId(), preset);
+    await this.setCapabilityValue('base_preset', preset).catch(() => undefined);
+  }
+
+  async flowSetHeadAngle(angle: number): Promise<void> {
+    const feet = Number(this.getCapabilityValue('base_feet_angle') ?? 0);
+    await this.client.setBaseAngle(this.userId(), this.deviceId(), feet, angle);
+    await this.setCapabilityValue('base_head_angle', angle).catch(() => undefined);
+  }
+
+  async flowSetFeetAngle(angle: number): Promise<void> {
+    const head = Number(this.getCapabilityValue('base_head_angle') ?? 0);
+    await this.client.setBaseAngle(this.userId(), this.deviceId(), angle, head);
+    await this.setCapabilityValue('base_feet_angle', angle).catch(() => undefined);
   }
 
   isAway(): boolean {

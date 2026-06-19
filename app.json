@@ -50,6 +50,24 @@
         "title": {
           "en": "Someone got into the bed"
         },
+        "tokens": [
+          {
+            "name": "bed_temperature",
+            "type": "number",
+            "title": {
+              "en": "Bed temperature"
+            },
+            "example": 30
+          },
+          {
+            "name": "target_temperature",
+            "type": "number",
+            "title": {
+              "en": "Target temperature"
+            },
+            "example": 21
+          }
+        ],
         "args": [
           {
             "type": "device",
@@ -72,6 +90,53 @@
         ]
       },
       {
+        "id": "sleep_session_ended",
+        "title": {
+          "en": "A sleep session ended"
+        },
+        "tokens": [
+          {
+            "name": "hours_slept",
+            "type": "number",
+            "title": {
+              "en": "Hours slept"
+            },
+            "example": 7.5
+          },
+          {
+            "name": "fitness_score",
+            "type": "number",
+            "title": {
+              "en": "Sleep fitness score"
+            },
+            "example": 82
+          },
+          {
+            "name": "quality_score",
+            "type": "number",
+            "title": {
+              "en": "Sleep quality score"
+            },
+            "example": 90
+          },
+          {
+            "name": "routine_score",
+            "type": "number",
+            "title": {
+              "en": "Sleep routine score"
+            },
+            "example": 75
+          }
+        ],
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          }
+        ]
+      },
+      {
         "id": "sleep_stage_changed",
         "title": {
           "en": "Sleep stage changed"
@@ -84,8 +149,130 @@
               "en": "Stage"
             },
             "example": "deep"
+          },
+          {
+            "name": "previous_stage",
+            "type": "string",
+            "title": {
+              "en": "Previous stage"
+            },
+            "example": "light"
           }
         ],
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          }
+        ]
+      },
+      {
+        "id": "alarm_ringing",
+        "title": {
+          "en": "The alarm started ringing"
+        },
+        "tokens": [
+          {
+            "name": "time",
+            "type": "string",
+            "title": {
+              "en": "Alarm time"
+            },
+            "example": "07:00:00"
+          }
+        ],
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          }
+        ]
+      },
+      {
+        "id": "alarm_dismissed",
+        "title": {
+          "en": "The alarm stopped"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          }
+        ]
+      },
+      {
+        "id": "snore_mitigation_started",
+        "title": {
+          "en": "Snore mitigation started"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          }
+        ]
+      },
+      {
+        "id": "snore_mitigation_stopped",
+        "title": {
+          "en": "Snore mitigation stopped"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          }
+        ]
+      },
+      {
+        "id": "water_became_low",
+        "title": {
+          "en": "Water became low"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          }
+        ]
+      },
+      {
+        "id": "water_refilled",
+        "title": {
+          "en": "Water was refilled"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          }
+        ]
+      },
+      {
+        "id": "priming_started",
+        "title": {
+          "en": "Priming started"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          }
+        ]
+      },
+      {
+        "id": "priming_finished",
+        "title": {
+          "en": "Priming finished"
+        },
         "args": [
           {
             "type": "device",
@@ -270,6 +457,107 @@
             "type": "device",
             "name": "device",
             "filter": "driver_id=bed-side"
+          }
+        ]
+      },
+      {
+        "id": "set_base_preset",
+        "title": {
+          "en": "Set the base preset"
+        },
+        "titleFormatted": {
+          "en": "Set the base to [[preset]]"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          },
+          {
+            "name": "preset",
+            "type": "dropdown",
+            "title": {
+              "en": "Preset"
+            },
+            "values": [
+              {
+                "id": "sleep",
+                "title": {
+                  "en": "Sleep"
+                }
+              },
+              {
+                "id": "relaxing",
+                "title": {
+                  "en": "Relaxing"
+                }
+              },
+              {
+                "id": "reading",
+                "title": {
+                  "en": "Reading"
+                }
+              },
+              {
+                "id": "flat",
+                "title": {
+                  "en": "Flat"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "set_head_angle",
+        "title": {
+          "en": "Set the head angle"
+        },
+        "titleFormatted": {
+          "en": "Set the head angle to [[angle]]°"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          },
+          {
+            "name": "angle",
+            "type": "number",
+            "min": 0,
+            "max": 45,
+            "step": 1,
+            "title": {
+              "en": "Angle"
+            }
+          }
+        ]
+      },
+      {
+        "id": "set_feet_angle",
+        "title": {
+          "en": "Set the feet angle"
+        },
+        "titleFormatted": {
+          "en": "Set the feet angle to [[angle]]°"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          },
+          {
+            "name": "angle",
+            "type": "number",
+            "min": 0,
+            "max": 45,
+            "step": 1,
+            "title": {
+              "en": "Angle"
+            }
           }
         ]
       },
