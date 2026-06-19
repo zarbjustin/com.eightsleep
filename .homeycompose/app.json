@@ -1,0 +1,30 @@
+{
+  "id": "com.eightsleep",
+  "version": "1.0.0",
+  "compatibility": ">=12.4.0",
+  "sdk": 3,
+  "runtime": "nodejs",
+  "brandColor": "#0A1828",
+  "platforms": [
+    "local"
+  ],
+  "name": {
+    "en": "Eight Sleep"
+  },
+  "description": {
+    "en": "Monitor and control your Eight Sleep Pod from Homey — temperature, presence, sleep metrics and alarms, per bed side."
+  },
+  "category": [
+    "climate"
+  ],
+  "permissions": [],
+  "images": {
+    "small": "/assets/images/small.png",
+    "large": "/assets/images/large.png",
+    "xlarge": "/assets/images/xlarge.png"
+  },
+  "author": {
+    "name": "Justin Zarb",
+    "email": "justin.zarb@zarb.co.uk"
+  }
+}
