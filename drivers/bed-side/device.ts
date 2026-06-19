@@ -20,6 +20,10 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
   private nextAlarmId: string | null = null;
 
+  private lastPresence: boolean | null = null;
+
+  private lastStage: string | null = null;
+
   private static readonly CAPABILITIES = [
     'onoff', 'target_temperature', 'measure_temperature', 'measure_temperature.room',
     'alarm_presence', 'measure_heart_rate', 'measure_hrv', 'measure_breath_rate',
@@ -131,7 +135,26 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
     await set('sleep_routine_score', m.sleepRoutineScore);
     await set('time_slept', m.timeSleptSeconds === null ? null : Math.round((m.timeSleptSeconds / 3600) * 10) / 10);
 
+    await this.fireStateTriggers(m.bedPresence, m.sleepStage);
     await this.refreshNextAlarm(set);
+  }
+
+  private async fireStateTriggers(presence: boolean | null, stage: string | null): Promise<void> {
+    if (presence !== null && presence !== this.lastPresence) {
+      const card = presence ? 'presence_started' : 'presence_stopped';
+      if (this.lastPresence !== null) {
+        await this.homey.flow.getDeviceTriggerCard(card).trigger(this, {}, {}).catch((e) => this.error('trigger', e));
+      }
+      this.lastPresence = presence;
+    }
+
+    if (stage !== null && stage !== this.lastStage) {
+      if (this.lastStage !== null) {
+        await this.homey.flow.getDeviceTriggerCard('sleep_stage_changed')
+          .trigger(this, { stage }, {}).catch((e) => this.error('trigger', e));
+      }
+      this.lastStage = stage;
+    }
   }
 
   private async refreshNextAlarm(
@@ -171,6 +194,40 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
   async onSettings({ changedKeys }: { changedKeys: string[] }): Promise<void> {
     if (changedKeys.includes('poll_interval')) this.startPolling();
+  }
+
+  // ---- Methods invoked by Flow cards (registered in the driver) ----
+
+  async flowSetTemperature(celsius: number): Promise<void> {
+    await this.client.setSideLevel(this.userId(), celsiusToLevel(celsius));
+    await this.setCapabilityValue('target_temperature', celsius).catch(() => undefined);
+  }
+
+  async flowSetPower(on: boolean): Promise<void> {
+    await this.client.setSidePower(this.userId(), on);
+    await this.setCapabilityValue('onoff', on).catch(() => undefined);
+  }
+
+  async flowSnoozeAlarm(minutes: number): Promise<void> {
+    if (!this.nextAlarmId) throw new Error('No alarm to snooze.');
+    await this.client.snoozeAlarm(this.userId(), this.nextAlarmId, minutes);
+  }
+
+  async flowStopAlarm(): Promise<void> {
+    if (!this.nextAlarmId) throw new Error('No alarm to stop.');
+    await this.client.dismissAlarm(this.userId(), this.nextAlarmId);
+  }
+
+  async flowSetOneOffAlarm(time: string): Promise<void> {
+    await this.client.setOneOffAlarm(this.userId(), { time });
+  }
+
+  isPresent(): boolean {
+    return this.getCapabilityValue('alarm_presence') === true;
+  }
+
+  isSideOn(): boolean {
+    return this.getCapabilityValue('onoff') === true;
   }
 
   async onUninit(): Promise<void> {

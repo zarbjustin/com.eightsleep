@@ -9,6 +9,19 @@ interface Credentials {
   password: string;
 }
 
+// Structural type for the device methods the Flow cards call.
+interface BedSideDevice extends Homey.Device {
+  flowSetTemperature(celsius: number): Promise<void>;
+  flowSetPower(on: boolean): Promise<void>;
+  flowSnoozeAlarm(minutes: number): Promise<void>;
+  flowStopAlarm(): Promise<void>;
+  flowSetOneOffAlarm(time: string): Promise<void>;
+  isPresent(): boolean;
+  isSideOn(): boolean;
+}
+
+type FlowArgs<T> = T & { device: BedSideDevice };
+
 function sideLabel(side: BedSideRef['side']): string {
   if (side === 'left') return 'Left Side';
   if (side === 'right') return 'Right Side';
@@ -18,7 +31,46 @@ function sideLabel(side: BedSideRef['side']): string {
 module.exports = class EightSleepBedSideDriver extends Homey.Driver {
 
   async onInit(): Promise<void> {
+    this.registerFlowCards();
     this.log('Eight Sleep bed-side driver initialized');
+  }
+
+  private registerFlowCards(): void {
+    this.homey.flow.getConditionCard('is_present')
+      .registerRunListener(async ({ device }: FlowArgs<unknown>) => device.isPresent());
+
+    this.homey.flow.getConditionCard('side_is_on')
+      .registerRunListener(async ({ device }: FlowArgs<unknown>) => device.isSideOn());
+
+    this.homey.flow.getActionCard('set_temperature')
+      .registerRunListener(async ({ device, temperature }: FlowArgs<{ temperature: number }>) => {
+        await device.flowSetTemperature(temperature);
+      });
+
+    this.homey.flow.getActionCard('turn_on')
+      .registerRunListener(async ({ device }: FlowArgs<unknown>) => {
+        await device.flowSetPower(true);
+      });
+
+    this.homey.flow.getActionCard('turn_off')
+      .registerRunListener(async ({ device }: FlowArgs<unknown>) => {
+        await device.flowSetPower(false);
+      });
+
+    this.homey.flow.getActionCard('snooze_alarm')
+      .registerRunListener(async ({ device, minutes }: FlowArgs<{ minutes: number }>) => {
+        await device.flowSnoozeAlarm(minutes);
+      });
+
+    this.homey.flow.getActionCard('stop_alarm')
+      .registerRunListener(async ({ device }: FlowArgs<unknown>) => {
+        await device.flowStopAlarm();
+      });
+
+    this.homey.flow.getActionCard('set_one_off_alarm')
+      .registerRunListener(async ({ device, time }: FlowArgs<{ time: string }>) => {
+        await device.flowSetOneOffAlarm(time);
+      });
   }
 
   /**

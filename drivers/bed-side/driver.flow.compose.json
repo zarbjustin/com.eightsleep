@@ -1,0 +1,123 @@
+{
+  "triggers": [
+    {
+      "id": "presence_started",
+      "title": {
+        "en": "Someone got into the bed"
+      }
+    },
+    {
+      "id": "presence_stopped",
+      "title": {
+        "en": "The bed became empty"
+      }
+    },
+    {
+      "id": "sleep_stage_changed",
+      "title": {
+        "en": "Sleep stage changed"
+      },
+      "tokens": [
+        {
+          "name": "stage",
+          "type": "string",
+          "title": {
+            "en": "Stage"
+          },
+          "example": "deep"
+        }
+      ]
+    }
+  ],
+  "conditions": [
+    {
+      "id": "is_present",
+      "title": {
+        "en": "Someone !{{is|isn't}} in the bed"
+      }
+    },
+    {
+      "id": "side_is_on",
+      "title": {
+        "en": "The side !{{is|isn't}} on"
+      }
+    }
+  ],
+  "actions": [
+    {
+      "id": "set_temperature",
+      "title": {
+        "en": "Set target temperature"
+      },
+      "titleFormatted": {
+        "en": "Set target temperature to [[temperature]] °C"
+      },
+      "args": [
+        {
+          "name": "temperature",
+          "type": "number",
+          "min": 13,
+          "max": 44,
+          "step": 0.5,
+          "label": {
+            "en": "°C"
+          }
+        }
+      ]
+    },
+    {
+      "id": "turn_on",
+      "title": {
+        "en": "Turn the side on"
+      }
+    },
+    {
+      "id": "turn_off",
+      "title": {
+        "en": "Turn the side off"
+      }
+    },
+    {
+      "id": "snooze_alarm",
+      "title": {
+        "en": "Snooze the alarm"
+      },
+      "titleFormatted": {
+        "en": "Snooze the alarm for [[minutes]] minutes"
+      },
+      "args": [
+        {
+          "name": "minutes",
+          "type": "number",
+          "min": 1,
+          "max": 60,
+          "step": 1,
+          "label": {
+            "en": "min"
+          }
+        }
+      ]
+    },
+    {
+      "id": "stop_alarm",
+      "title": {
+        "en": "Stop the alarm"
+      }
+    },
+    {
+      "id": "set_one_off_alarm",
+      "title": {
+        "en": "Set a one-off alarm"
+      },
+      "titleFormatted": {
+        "en": "Set a one-off alarm at [[time]]"
+      },
+      "args": [
+        {
+          "name": "time",
+          "type": "time"
+        }
+      ]
+    }
+  ]
+}

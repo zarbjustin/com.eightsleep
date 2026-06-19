@@ -28,6 +28,200 @@
     "name": "Justin Zarb",
     "email": "justin.zarb@zarb.co.uk"
   },
+  "flow": {
+    "triggers": [
+      {
+        "id": "presence_started",
+        "title": {
+          "en": "Someone got into the bed"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          }
+        ]
+      },
+      {
+        "id": "presence_stopped",
+        "title": {
+          "en": "The bed became empty"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          }
+        ]
+      },
+      {
+        "id": "sleep_stage_changed",
+        "title": {
+          "en": "Sleep stage changed"
+        },
+        "tokens": [
+          {
+            "name": "stage",
+            "type": "string",
+            "title": {
+              "en": "Stage"
+            },
+            "example": "deep"
+          }
+        ],
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          }
+        ]
+      }
+    ],
+    "conditions": [
+      {
+        "id": "is_present",
+        "title": {
+          "en": "Someone !{{is|isn't}} in the bed"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          }
+        ]
+      },
+      {
+        "id": "side_is_on",
+        "title": {
+          "en": "The side !{{is|isn't}} on"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          }
+        ]
+      }
+    ],
+    "actions": [
+      {
+        "id": "set_temperature",
+        "title": {
+          "en": "Set target temperature"
+        },
+        "titleFormatted": {
+          "en": "Set target temperature to [[temperature]] °C"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          },
+          {
+            "name": "temperature",
+            "type": "number",
+            "min": 13,
+            "max": 44,
+            "step": 0.5,
+            "label": {
+              "en": "°C"
+            }
+          }
+        ]
+      },
+      {
+        "id": "turn_on",
+        "title": {
+          "en": "Turn the side on"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          }
+        ]
+      },
+      {
+        "id": "turn_off",
+        "title": {
+          "en": "Turn the side off"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          }
+        ]
+      },
+      {
+        "id": "snooze_alarm",
+        "title": {
+          "en": "Snooze the alarm"
+        },
+        "titleFormatted": {
+          "en": "Snooze the alarm for [[minutes]] minutes"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          },
+          {
+            "name": "minutes",
+            "type": "number",
+            "min": 1,
+            "max": 60,
+            "step": 1,
+            "label": {
+              "en": "min"
+            }
+          }
+        ]
+      },
+      {
+        "id": "stop_alarm",
+        "title": {
+          "en": "Stop the alarm"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          }
+        ]
+      },
+      {
+        "id": "set_one_off_alarm",
+        "title": {
+          "en": "Set a one-off alarm"
+        },
+        "titleFormatted": {
+          "en": "Set a one-off alarm at [[time]]"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          },
+          {
+            "name": "time",
+            "type": "time"
+          }
+        ]
+      }
+    ]
+  },
   "drivers": [
     {
       "name": {
