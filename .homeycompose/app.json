@@ -30,6 +30,9 @@
     ]
   },
   "permissions": [],
+  "support": "mailto:justin.zarb@zarb.co.uk",
+  "source": "https://github.com/zarbjustin/com.eightsleep",
+  "homepage": "https://github.com/zarbjustin/com.eightsleep",
   "images": {
     "small": "/assets/images/small.png",
     "large": "/assets/images/large.png",

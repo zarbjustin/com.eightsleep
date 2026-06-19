@@ -65,6 +65,9 @@
           "min": 13,
           "max": 44,
           "step": 0.5,
+          "title": {
+            "en": "Temperature"
+          },
           "label": {
             "en": "°C"
           }
@@ -98,6 +101,9 @@
           "min": 1,
           "max": 60,
           "step": 1,
+          "title": {
+            "en": "Minutes"
+          },
           "label": {
             "en": "min"
           }
@@ -139,7 +145,10 @@
       "args": [
         {
           "name": "time",
-          "type": "time"
+          "type": "time",
+          "title": {
+            "en": "Time"
+          }
         }
       ]
     }

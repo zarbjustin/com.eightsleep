@@ -239,3 +239,52 @@ test('snoozeAlarm PUTs snoozeMinutes to the alarm snooze endpoint', async () => 
   assert.ok(captured.url.endsWith('/v1/users/u1/alarms/alarm-9/snooze'));
   assert.deepStrictEqual(JSON.parse(captured.init.body), { snoozeMinutes: 9, ignoreDeviceErrors: false });
 });
+
+test('concurrent requests trigger only one authentication', async () => {
+  let auths = 0;
+  const { client } = makeClient((url) => {
+    if (url.endsWith('/v1/tokens')) { auths += 1; return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 })); }
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
+    if (url.includes('/devices/')) return Promise.resolve(okJson({ result: { leftUserId: 'u1' } }));
+    return Promise.resolve(okJson({}));
+  });
+
+  await Promise.all([client.getMe(), client.getDevice('d1'), client.getDevice('d2')]);
+  assert.strictEqual(auths, 1);
+});
+
+test('a non-recoverable API error throws EightSleepError carrying the status', async () => {
+  const { client } = makeClient((url) => {
+    if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
+    if (url.includes('/devices/')) return Promise.resolve(errStatus(500, 'boom'));
+    return Promise.resolve(okJson({}));
+  });
+
+  await assert.rejects(client.getDevice('d1'), (e) => {
+    assert.ok(e instanceof EightSleepError);
+    assert.strictEqual(e.status, 500);
+    return true;
+  });
+});
+
+test('getDeviceStatus normalises water, priming and away occupants', async () => {
+  const { client } = makeClient((url) => {
+    if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
+    if (url.includes('/devices/')) {
+      return Promise.resolve(okJson({
+        result: {
+          hasWater: false, priming: true, needsPriming: true, awaySides: { left: 'u1' },
+        },
+      }));
+    }
+    return Promise.resolve(okJson({}));
+  });
+
+  const s = await client.getDeviceStatus('d1');
+  assert.strictEqual(s.hasWater, false);
+  assert.strictEqual(s.isPriming, true);
+  assert.strictEqual(s.needsPriming, true);
+  assert.deepStrictEqual(s.awayUserIds, ['u1']);
+});
