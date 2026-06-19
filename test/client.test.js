@@ -1,0 +1,118 @@
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert');
+
+const { EightSleepClient, EightSleepError } = require('../.homeybuild/lib/EightSleepClient.js');
+
+const okJson = (value) => ({
+  ok: true, status: 200, json: async () => value, text: async () => '',
+});
+const errStatus = (status, body = '') => ({
+  ok: false, status, json: async () => ({}), text: async () => body,
+});
+
+/** Build a client with a routed fetch stub and a virtual clock/sleep. */
+function makeClient(router, extra = {}) {
+  const slept = [];
+  let clock = 0;
+  const client = new EightSleepClient({
+    email: 'a@b.com',
+    password: 'pw',
+    now: () => clock,
+    sleep: async (ms) => { slept.push(ms); clock += ms; },
+    fetchImpl: (url, init) => router(url, init),
+    ...extra,
+  });
+  return { client, slept };
+}
+
+test('invalid credentials throw an EightSleepError with the auth status', async () => {
+  const { client } = makeClient((url) => {
+    if (url.endsWith('/v1/tokens')) return Promise.resolve(errStatus(401, 'bad creds'));
+    return Promise.resolve(okJson({}));
+  });
+  await assert.rejects(client.authenticate(), (e) => {
+    assert.ok(e instanceof EightSleepError);
+    assert.strictEqual(e.status, 401);
+    return true;
+  });
+});
+
+test('authenticate resolves the primary user id from /users/me', async () => {
+  const { client } = makeClient((url) => {
+    if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
+    return Promise.resolve(okJson({}));
+  });
+  const token = await client.authenticate();
+  assert.strictEqual(token.userId, 'u1');
+  assert.strictEqual(client.userId, 'u1');
+});
+
+test('a 401 on an API call triggers exactly one re-auth then retries', async () => {
+  let auths = 0;
+  let deviceCalls = 0;
+  const { client } = makeClient((url) => {
+    if (url.endsWith('/v1/tokens')) { auths += 1; return Promise.resolve(okJson({ access_token: `t${auths}`, expires_in: 3600 })); }
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
+    if (url.includes('/devices/')) {
+      deviceCalls += 1;
+      if (deviceCalls === 1) return Promise.resolve(errStatus(401));
+      return Promise.resolve(okJson({ result: { leftUserId: 'u1' } }));
+    }
+    return Promise.resolve(okJson({}));
+  });
+
+  const out = await client.getDevice('dev1');
+  assert.strictEqual(out.result.leftUserId, 'u1');
+  assert.strictEqual(auths, 2, 'should authenticate once up-front and once after the 401');
+  assert.strictEqual(deviceCalls, 2);
+});
+
+test('a 429 backs off with exponential delay then succeeds', async () => {
+  let deviceCalls = 0;
+  const { client, slept } = makeClient((url) => {
+    if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
+    if (url.includes('/devices/')) {
+      deviceCalls += 1;
+      if (deviceCalls <= 2) return Promise.resolve(errStatus(429));
+      return Promise.resolve(okJson({ result: { leftUserId: 'u1' } }));
+    }
+    return Promise.resolve(okJson({}));
+  });
+
+  const out = await client.getDevice('dev1');
+  assert.strictEqual(out.result.leftUserId, 'u1');
+  assert.strictEqual(deviceCalls, 3);
+  assert.ok(slept.includes(1000), `expected 1000ms backoff, got ${JSON.stringify(slept)}`);
+  assert.ok(slept.includes(2000), `expected 2000ms backoff, got ${JSON.stringify(slept)}`);
+});
+
+test('discoverBedSides returns one ref per occupied side', async () => {
+  const { client } = makeClient((url) => {
+    if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1', devices: ['dev1'] } }));
+    if (url.includes('/devices/')) return Promise.resolve(okJson({ result: { leftUserId: 'u1', rightUserId: 'u2' } }));
+    return Promise.resolve(okJson({}));
+  });
+
+  const sides = await client.discoverBedSides();
+  assert.strictEqual(sides.length, 2);
+  assert.deepStrictEqual(sides.map((s) => s.side).sort(), ['left', 'right']);
+  assert.deepStrictEqual(sides.map((s) => s.userId).sort(), ['u1', 'u2']);
+});
+
+test('a single-occupant bed yields one solo side', async () => {
+  const { client } = makeClient((url) => {
+    if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1', devices: ['dev1'] } }));
+    if (url.includes('/devices/')) return Promise.resolve(okJson({ result: { leftUserId: 'u1', rightUserId: 'u1' } }));
+    return Promise.resolve(okJson({}));
+  });
+
+  const sides = await client.discoverBedSides();
+  assert.strictEqual(sides.length, 1);
+  assert.strictEqual(sides[0].side, 'solo');
+});
