@@ -15,7 +15,17 @@ module.exports = class EightSleepApp extends Homey.App {
   private readonly clients: Map<string, ClientEntry> = new Map();
 
   async onInit(): Promise<void> {
+    this.registerFlowCards();
     this.log('Eight Sleep app has been initialized');
+  }
+
+  private registerFlowCards(): void {
+    this.homey.flow.getConditionCard('all_sides_away')
+      .registerRunListener(async () => {
+        const devices = this.homey.drivers.getDriver('bed-side').getDevices();
+        const isAway = (d: Homey.Device): boolean => (d as unknown as { isAway(): boolean }).isAway();
+        return devices.length > 0 && devices.every(isAway);
+      });
   }
 
   /** Get (or create) the shared client for an account and take a reference. */

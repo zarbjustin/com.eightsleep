@@ -12,6 +12,8 @@ interface Credentials {
 // Structural type for the device methods the Flow cards call.
 interface BedSideDevice extends Homey.Device {
   flowSetTemperature(celsius: number): Promise<void>;
+  flowSetTemperatureF(fahrenheit: number): Promise<void>;
+  flowSetTemperatureIn(celsius: number, minutes: number): Promise<void>;
   flowSetPower(on: boolean): Promise<void>;
   flowSnoozeAlarm(minutes: number): Promise<void>;
   flowStopAlarm(): Promise<void>;
@@ -54,6 +56,16 @@ module.exports = class EightSleepBedSideDriver extends Homey.Driver {
     this.homey.flow.getActionCard('set_temperature')
       .registerRunListener(async ({ device, temperature }: FlowArgs<{ temperature: number }>) => {
         await device.flowSetTemperature(temperature);
+      });
+
+    this.homey.flow.getActionCard('set_temperature_f')
+      .registerRunListener(async ({ device, fahrenheit }: FlowArgs<{ fahrenheit: number }>) => {
+        await device.flowSetTemperatureF(fahrenheit);
+      });
+
+    this.homey.flow.getActionCard('set_temperature_in')
+      .registerRunListener(async ({ device, temperature, minutes }: FlowArgs<{ temperature: number; minutes: number }>) => {
+        await device.flowSetTemperatureIn(temperature, minutes);
       });
 
     this.homey.flow.getActionCard('turn_on')
@@ -131,31 +143,35 @@ module.exports = class EightSleepBedSideDriver extends Homey.Driver {
       const creds = credentials;
       const client = createClient({ email: creds.email, password: creds.password });
       const sides = await client.discoverBedSides();
+      const deviceIds = [...new Set(sides.map((s) => s.deviceId))];
 
-      return sides.map((s) => ({
-        name: `Eight Sleep ${sideLabel(s.side)}`,
-        data: { id: `${s.deviceId}:${s.side}` },
-        store: {
-          deviceId: s.deviceId,
-          userId: s.userId,
-          side: s.side,
-          email: creds.email,
-          password: creds.password,
-        },
-      }));
+      return sides.map((s) => {
+        const podSuffix = deviceIds.length > 1 ? ` (Pod ${deviceIds.indexOf(s.deviceId) + 1})` : '';
+        return {
+          name: `Eight Sleep ${sideLabel(s.side)}${podSuffix}`,
+          data: { id: `${s.deviceId}:${s.side}` },
+          store: {
+            deviceId: s.deviceId,
+            userId: s.userId,
+            side: s.side,
+            email: creds.email,
+            password: creds.password,
+          },
+        };
+      });
     });
   }
 
   /**
    * Repair: re-enter the Eight Sleep credentials for an existing device. We
-   * validate them, then persist them to the device's store.
+   * validate them, then persist them to the app's encrypted settings store.
    */
   async onRepair(session: Homey.Driver.PairSession, device: Homey.Device): Promise<void> {
     session.setHandler('login', async (data: { username: string; password: string }) => {
       const client = createClient({ email: data.username, password: data.password });
       await client.authenticate();
-      await device.setStoreValue('email', data.username);
-      await device.setStoreValue('password', data.password);
+      (device as unknown as { setCredentials(email: string, password: string): void })
+        .setCredentials(data.username, data.password);
       return true;
     });
   }

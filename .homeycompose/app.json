@@ -12,7 +12,9 @@
     "en": "Eight Sleep"
   },
   "description": {
-    "en": "Monitor and control your Eight Sleep Pod from Homey — temperature, presence, sleep metrics and alarms, per bed side."
+    "en": "Monitor and control your Eight Sleep Pod from Homey — temperature, presence, sleep metrics and alarms, per bed side.",
+    "nl": "Bekijk en bedien je Eight Sleep Pod vanuit Homey — temperatuur, aanwezigheid, slaapstatistieken en wekkers, per bedzijde.",
+    "de": "Überwache und steuere deinen Eight Sleep Pod von Homey aus — Temperatur, Anwesenheit, Schlafdaten und Wecker, pro Bettseite."
   },
   "category": [
     "climate"

@@ -2,7 +2,7 @@
 
 import Homey from 'homey';
 import { EightSleepClient } from '../../lib/EightSleepClient';
-import { celsiusToLevel, levelToCelsius } from '../../lib/temperature';
+import { celsiusToLevel, fahrenheitToLevel, levelToCelsius } from '../../lib/temperature';
 import type { SideMetrics } from '../../lib/types';
 
 interface BedSideStore {
@@ -46,11 +46,14 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
   private immediateTimer: NodeJS.Timeout | null = null;
 
+  private tempTimers: NodeJS.Timeout[] = [];
+
   private static readonly CAPABILITIES = [
     'onoff', 'target_temperature', 'measure_temperature', 'measure_temperature.room',
     'alarm_presence', 'measure_heart_rate', 'measure_hrv', 'measure_breath_rate',
     'sleep_stage', 'sleep_fitness_score', 'sleep_quality_score', 'sleep_routine_score', 'time_slept',
-    'next_alarm', 'away_mode', 'alarm_water_low', 'is_priming', 'sleep_fitness_weekly',
+    'time_slept', 'sleep_fitness_weekly', 'measure_power',
+    'next_alarm', 'away_mode', 'alarm_water_low', 'is_priming',
     'button.alarm_snooze', 'button.alarm_stop', 'button.prime',
   ];
 
@@ -107,15 +110,35 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
   }
 
   private buildClient(): EightSleepClient {
-    const store = this.getStore() as BedSideStore;
+    const { email, password } = this.getCredentials();
     const app = this.homey.app as unknown as EightSleepAppApi;
-    return app.getClient(store.email, store.password);
+    return app.getClient(email, password);
   }
 
   private releaseClient(): void {
-    const store = this.getStore() as BedSideStore;
+    const { email, password } = this.getCredentials();
     const app = this.homey.app as unknown as EightSleepAppApi;
-    app.releaseClient(store.email, store.password);
+    app.releaseClient(email, password);
+  }
+
+  private credKey(): string {
+    return `creds:${this.getData().id}`;
+  }
+
+  /** Read credentials from app settings, migrating legacy device-store creds. */
+  private getCredentials(): { email: string; password: string } {
+    const saved = this.homey.settings.get(this.credKey()) as { email?: string; password?: string } | null;
+    if (saved?.email && saved?.password) return { email: saved.email, password: saved.password };
+    const store = this.getStore() as BedSideStore;
+    if (store.email && store.password) {
+      this.homey.settings.set(this.credKey(), { email: store.email, password: store.password });
+    }
+    return { email: store.email, password: store.password };
+  }
+
+  /** Persist credentials to app settings (used by repair). */
+  setCredentials(email: string, password: string): void {
+    this.homey.settings.set(this.credKey(), { email, password });
   }
 
   private userId(): string {
@@ -134,6 +157,7 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
       const state = await this.client.getSideState(this.userId());
       await this.setCapabilityValue('onoff', state.isOn);
       await this.setCapabilityValue('target_temperature', levelToCelsius(state.currentLevel));
+      await this.setCapabilityValue('measure_power', this.estimatePower(state.isOn, state.currentLevel)).catch(() => undefined);
       reachable = true;
     } catch (err) {
       lastError = err;
@@ -439,6 +463,32 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
   async flowSetTemperature(celsius: number): Promise<void> {
     await this.client.setSideLevel(this.userId(), celsiusToLevel(celsius));
     await this.setCapabilityValue('target_temperature', celsius).catch(() => undefined);
+    this.scheduleImmediateRefresh();
+  }
+
+  async flowSetTemperatureF(fahrenheit: number): Promise<void> {
+    const level = fahrenheitToLevel(fahrenheit);
+    await this.client.setSideLevel(this.userId(), level);
+    await this.setCapabilityValue('target_temperature', levelToCelsius(level)).catch(() => undefined);
+    this.scheduleImmediateRefresh();
+  }
+
+  /** Schedule a one-shot temperature change after a delay (minutes). */
+  async flowSetTemperatureIn(celsius: number, minutes: number): Promise<void> {
+    const timer = this.homey.setTimeout(() => {
+      this.client.setSideLevel(this.userId(), celsiusToLevel(celsius))
+        .then(() => this.setCapabilityValue('target_temperature', celsius).catch(() => undefined))
+        .catch((e) => this.error('scheduled temperature', e));
+    }, Math.max(1, minutes) * 60_000);
+    this.tempTimers.push(timer);
+  }
+
+  /** Rough running-power estimate for Homey Energy (watts). */
+  private estimatePower(on: boolean, level: number): number {
+    if (!on) return 5;
+    const intensity = Math.abs(level) / 100;
+    const peak = level < 0 ? 80 : 110; // cooling vs heating
+    return Math.round(15 + intensity * peak);
   }
 
   async flowSetPower(on: boolean): Promise<void> {
@@ -494,7 +544,7 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
   getWidgetState(): {
     name: string; on: boolean; target: number | null; bedTemp: number | null;
     presence: boolean; heartRate: number | null; stage: string | null;
-    nextAlarm: string | null; away: boolean; waterLow: boolean;
+    nextAlarm: string | null; away: boolean; waterLow: boolean; units: string;
     } {
     return {
       name: this.getName(),
@@ -507,6 +557,7 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
       nextAlarm: this.getCapabilityValue('next_alarm') ?? null,
       away: this.getCapabilityValue('away_mode') === true,
       waterLow: this.getCapabilityValue('alarm_water_low') === true,
+      units: (this.getSetting('display_units') as string) || 'C',
     };
   }
 
@@ -521,12 +572,16 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
   async onUninit(): Promise<void> {
     this.stopPolling();
     if (this.immediateTimer) this.homey.clearTimeout(this.immediateTimer);
+    this.tempTimers.forEach((t) => this.homey.clearTimeout(t));
+    this.tempTimers = [];
     this.releaseClient();
   }
 
   async onDeleted(): Promise<void> {
     this.stopPolling();
     if (this.immediateTimer) this.homey.clearTimeout(this.immediateTimer);
+    this.tempTimers.forEach((t) => this.homey.clearTimeout(t));
+    this.tempTimers = [];
     this.releaseClient();
   }
 

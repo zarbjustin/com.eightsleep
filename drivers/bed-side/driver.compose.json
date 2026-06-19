@@ -17,6 +17,8 @@
     "sleep_quality_score",
     "sleep_routine_score",
     "time_slept",
+    "sleep_fitness_weekly",
+    "measure_power",
     "next_alarm",
     "away_mode",
     "alarm_water_low",
@@ -139,6 +141,21 @@
       "hint": {
         "en": "How often to read the bed side's state from Eight Sleep."
       }
+    },
+    {
+      "id": "display_units",
+      "type": "dropdown",
+      "label": {
+        "en": "Temperature units (widget & Flow)"
+      },
+      "value": "C",
+      "hint": {
+        "en": "Homey's thermostat is always Celsius; this affects the widget display and the Fahrenheit Flow action."
+      },
+      "values": [
+        { "id": "C", "label": { "en": "Celsius" } },
+        { "id": "F", "label": { "en": "Fahrenheit" } }
+      ]
     }
   ]
 }

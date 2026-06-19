@@ -55,7 +55,7 @@
 
     <div class="temp">
       <button id="down" type="button">−</button>
-      <div class="value"><span id="target">—</span><span style="font-size:18px">°C</span></div>
+      <div class="value"><span id="target">—</span><span style="font-size:18px" id="unit">°C</span></div>
       <button id="up" type="button">+</button>
     </div>
 
@@ -78,8 +78,12 @@
 
       function render() {
         if (!state) return;
-        el('target').textContent = state.target == null ? '—' : Number(state.target).toFixed(1);
-        el('bedTemp').textContent = state.bedTemp == null ? '—' : Number(state.bedTemp).toFixed(1) + '°';
+        const toF = (c) => (c * 9 / 5) + 32;
+        const isF = state.units === 'F';
+        el('unit').textContent = isF ? '°F' : '°C';
+        const fmtTemp = (c) => (c == null ? '—' : (isF ? Math.round(toF(c)) : Number(c).toFixed(1)));
+        el('target').textContent = fmtTemp(state.target);
+        el('bedTemp').textContent = state.bedTemp == null ? '—' : (isF ? Math.round(toF(state.bedTemp)) + '°' : Number(state.bedTemp).toFixed(1) + '°');
         el('hr').textContent = state.heartRate == null ? '—' : Math.round(state.heartRate);
         el('stage').textContent = state.stage || '—';
         el('presence').className = 'dot' + (state.presence ? ' on' : '');

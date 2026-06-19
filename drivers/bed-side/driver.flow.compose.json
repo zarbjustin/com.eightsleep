@@ -268,6 +268,31 @@
       ]
     },
     {
+      "id": "set_temperature_f",
+      "title": {
+        "en": "Set target temperature (°F)"
+      },
+      "titleFormatted": {
+        "en": "Set target temperature to [[fahrenheit]] °F"
+      },
+      "args": [
+        { "name": "fahrenheit", "type": "number", "min": 55, "max": 110, "step": 1, "title": { "en": "Fahrenheit" } }
+      ]
+    },
+    {
+      "id": "set_temperature_in",
+      "title": {
+        "en": "Set target temperature after a delay"
+      },
+      "titleFormatted": {
+        "en": "Set target temperature to [[temperature]] °C in [[minutes]] minutes"
+      },
+      "args": [
+        { "name": "temperature", "type": "number", "min": 13, "max": 44, "step": 0.5, "title": { "en": "Temperature" } },
+        { "name": "minutes", "type": "number", "min": 1, "max": 720, "step": 1, "title": { "en": "Minutes" } }
+      ]
+    },
+    {
       "id": "set_one_off_alarm",
       "title": {
         "en": "Set a one-off alarm"
