@@ -40,6 +40,12 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
   private baseBound = false;
 
+  private cycle = 0;
+
+  private failures = 0;
+
+  private immediateTimer: NodeJS.Timeout | null = null;
+
   private static readonly CAPABILITIES = [
     'onoff', 'target_temperature', 'measure_temperature', 'measure_temperature.room',
     'alarm_presence', 'measure_heart_rate', 'measure_hrv', 'measure_breath_rate',
@@ -58,10 +64,12 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
     this.registerCapabilityListener('onoff', async (value: boolean) => {
       await this.client.setSidePower(this.userId(), value);
+      this.scheduleImmediateRefresh();
     });
 
     this.registerCapabilityListener('target_temperature', async (value: number) => {
       await this.client.setSideLevel(this.userId(), celsiusToLevel(value));
+      this.scheduleImmediateRefresh();
     });
 
     this.registerCapabilityListener('button.alarm_snooze', async () => {
@@ -76,14 +84,16 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
     this.registerCapabilityListener('away_mode', async (value: boolean) => {
       await this.client.setAwayMode(this.userId(), value ? 'start' : 'end');
+      this.scheduleImmediateRefresh();
     });
 
     this.registerCapabilityListener('button.prime', async () => {
       await this.client.primePod(this.deviceId(), this.userId());
+      this.scheduleImmediateRefresh();
     });
 
-    await this.refresh();
-    this.startPolling();
+    await this.refresh(true);
+    this.scheduleNextPoll();
     this.log(`Eight Sleep bed side initialized (${this.getStoreValue('side')})`);
   }
 
@@ -116,7 +126,7 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
     return this.getStoreValue('deviceId');
   }
 
-  private async refresh(): Promise<void> {
+  private async refresh(full = true): Promise<void> {
     let reachable = false;
     let lastError: unknown = null;
 
@@ -138,11 +148,23 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
       this.error('Failed to refresh Eight Sleep metrics', err);
     }
 
-    try {
-      await this.refreshBase();
-    } catch (err) {
-      this.error('Failed to refresh Eight Sleep base', err);
+    if (full) {
+      const set = async (cap: string, value: number | boolean | string | null): Promise<void> => {
+        await this.setCapabilityValue(cap, value).catch((e) => this.error(`setCapabilityValue ${cap}`, e));
+      };
+      try {
+        await this.refreshDeviceStatus(set);
+      } catch (err) {
+        this.error('Failed to refresh Eight Sleep device status', err);
+      }
+      try {
+        await this.refreshBase();
+      } catch (err) {
+        this.error('Failed to refresh Eight Sleep base', err);
+      }
     }
+
+    this.failures = reachable ? 0 : this.failures + 1;
 
     if (reachable) {
       if (!this.getAvailable()) await this.setAvailable();
@@ -191,7 +213,6 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
     await this.fireStateTriggers(m);
     await this.refreshNextAlarm(set);
-    await this.refreshDeviceStatus(set);
   }
 
   /** Helper to fire a device trigger card, swallowing errors. */
@@ -338,24 +359,45 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
     await set('next_alarm', label);
   }
 
-  private startPolling(): void {
+  /** Self-scheduling poll with jitter, error backoff and a slow tier. */
+  private scheduleNextPoll(): void {
     this.stopPolling();
-    const minutes = Number(this.getSetting('poll_interval') ?? 5);
-    const intervalMs = Math.max(1, minutes) * 60_000;
-    this.pollTimer = this.homey.setInterval(() => {
-      this.refresh().catch(() => undefined);
-    }, intervalMs);
+    const minutes = Math.max(1, Number(this.getSetting('poll_interval') ?? 5));
+    const base = minutes * 60_000;
+    const backoff = 2 ** Math.min(this.failures, 4); // up to 16x on repeated failures
+    const jitter = 0.85 + Math.random() * 0.3; // ±15%
+    const delay = Math.min(base * backoff * jitter, 60 * 60_000);
+    this.pollTimer = this.homey.setTimeout(() => {
+      this.poll().catch(() => undefined).finally(() => this.scheduleNextPoll());
+    }, delay);
+  }
+
+  private async poll(): Promise<void> {
+    this.cycle += 1;
+    // Run the slow tier (water/priming/base) roughly every 30 minutes.
+    const minutes = Math.max(1, Number(this.getSetting('poll_interval') ?? 5));
+    const slowEvery = Math.max(1, Math.round(30 / minutes));
+    const full = this.cycle % slowEvery === 0;
+    await this.refresh(full);
+  }
+
+  /** Re-read state shortly after a write so the UI reflects it quickly. */
+  private scheduleImmediateRefresh(): void {
+    if (this.immediateTimer) this.homey.clearTimeout(this.immediateTimer);
+    this.immediateTimer = this.homey.setTimeout(() => {
+      this.refresh(false).catch(() => undefined);
+    }, 2_000);
   }
 
   private stopPolling(): void {
     if (this.pollTimer) {
-      this.homey.clearInterval(this.pollTimer);
+      this.homey.clearTimeout(this.pollTimer);
       this.pollTimer = null;
     }
   }
 
   async onSettings({ changedKeys }: { changedKeys: string[] }): Promise<void> {
-    if (changedKeys.includes('poll_interval')) this.startPolling();
+    if (changedKeys.includes('poll_interval')) this.scheduleNextPoll();
   }
 
   // ---- Methods invoked by Flow cards (registered in the driver) ----
@@ -440,11 +482,13 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
   async onUninit(): Promise<void> {
     this.stopPolling();
+    if (this.immediateTimer) this.homey.clearTimeout(this.immediateTimer);
     this.releaseClient();
   }
 
   async onDeleted(): Promise<void> {
     this.stopPolling();
+    if (this.immediateTimer) this.homey.clearTimeout(this.immediateTimer);
     this.releaseClient();
   }
 
