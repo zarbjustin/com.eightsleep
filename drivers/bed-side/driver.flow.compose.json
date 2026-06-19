@@ -41,6 +41,12 @@
       "title": {
         "en": "The side !{{is|isn't}} on"
       }
+    },
+    {
+      "id": "is_away",
+      "title": {
+        "en": "Away mode !{{is|isn't}} on"
+      }
     }
   ],
   "actions": [
@@ -102,6 +108,24 @@
       "id": "stop_alarm",
       "title": {
         "en": "Stop the alarm"
+      }
+    },
+    {
+      "id": "start_away",
+      "title": {
+        "en": "Start away mode"
+      }
+    },
+    {
+      "id": "stop_away",
+      "title": {
+        "en": "Stop away mode"
+      }
+    },
+    {
+      "id": "prime_pod",
+      "title": {
+        "en": "Prime the Pod"
       }
     },
     {

@@ -18,14 +18,24 @@
     "sleep_routine_score",
     "time_slept",
     "next_alarm",
+    "away_mode",
+    "alarm_water_low",
+    "is_priming",
     "button.alarm_snooze",
-    "button.alarm_stop"
+    "button.alarm_stop",
+    "button.prime"
   ],
   "capabilitiesOptions": {
     "onoff": {
       "title": {
         "en": "Side power"
       }
+    },
+    "button.prime": {
+      "title": {
+        "en": "Prime Pod"
+      },
+      "maintenanceAction": true
     },
     "button.alarm_snooze": {
       "title": {

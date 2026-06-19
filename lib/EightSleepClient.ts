@@ -442,6 +442,54 @@ export class EightSleepClient {
     });
   }
 
+  /** Start or end away mode for a side. */
+  async setAwayMode(userId: string, action: 'start' | 'end'): Promise<void> {
+    // Backdate by 24h so the API applies the change immediately.
+    const when = `${new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 23)}Z`;
+    await this.apiRequest('put', `${APP_API_URL}v1/users/${userId}/away-mode`, {
+      awayPeriod: { [action]: when },
+    });
+  }
+
+  /** Trigger a re-prime of the Pod. */
+  async primePod(deviceId: string, userId: string): Promise<void> {
+    await this.apiRequest('post', `${APP_API_URL}v1/devices/${deviceId}/priming/tasks`, {
+      notifications: { users: [userId], meta: 'rePriming' },
+    });
+  }
+
+  /** Set which physical side a user occupies ('solo' | 'left' | 'right'). */
+  async setBedSide(userId: string, deviceId: string, side: 'solo' | 'left' | 'right'): Promise<void> {
+    await this.apiRequest('put', `${CLIENT_API_URL}/users/${userId}/current-device`, {
+      id: deviceId,
+      side,
+    });
+  }
+
+  /** Read bed-level maintenance status (water + priming). */
+  async getDeviceStatus(deviceId: string): Promise<{
+    hasWater: boolean | null;
+    isPriming: boolean | null;
+    needsPriming: boolean | null;
+    awayUserIds: string[];
+  }> {
+    const data = await this.apiRequest<{
+      result?: {
+        hasWater?: boolean;
+        priming?: boolean;
+        needsPriming?: boolean;
+        awaySides?: Record<string, string>;
+      };
+    }>('get', `${CLIENT_API_URL}/devices/${deviceId}`);
+    const r = data?.result ?? {};
+    return {
+      hasWater: typeof r.hasWater === 'boolean' ? r.hasWater : null,
+      isPriming: typeof r.priming === 'boolean' ? r.priming : null,
+      needsPriming: typeof r.needsPriming === 'boolean' ? r.needsPriming : null,
+      awayUserIds: r.awaySides ? Object.values(r.awaySides) : [],
+    };
+  }
+
   private async safeText(res: FetchResponse): Promise<string> {
     try {
       return await res.text();

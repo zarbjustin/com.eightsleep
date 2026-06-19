@@ -16,8 +16,11 @@ interface BedSideDevice extends Homey.Device {
   flowSnoozeAlarm(minutes: number): Promise<void>;
   flowStopAlarm(): Promise<void>;
   flowSetOneOffAlarm(time: string): Promise<void>;
+  flowSetAway(on: boolean): Promise<void>;
+  flowPrime(): Promise<void>;
   isPresent(): boolean;
   isSideOn(): boolean;
+  isAway(): boolean;
 }
 
 type FlowArgs<T> = T & { device: BedSideDevice };
@@ -42,6 +45,9 @@ module.exports = class EightSleepBedSideDriver extends Homey.Driver {
     this.homey.flow.getConditionCard('side_is_on')
       .registerRunListener(async ({ device }: FlowArgs<unknown>) => device.isSideOn());
 
+    this.homey.flow.getConditionCard('is_away')
+      .registerRunListener(async ({ device }: FlowArgs<unknown>) => device.isAway());
+
     this.homey.flow.getActionCard('set_temperature')
       .registerRunListener(async ({ device, temperature }: FlowArgs<{ temperature: number }>) => {
         await device.flowSetTemperature(temperature);
@@ -65,6 +71,21 @@ module.exports = class EightSleepBedSideDriver extends Homey.Driver {
     this.homey.flow.getActionCard('stop_alarm')
       .registerRunListener(async ({ device }: FlowArgs<unknown>) => {
         await device.flowStopAlarm();
+      });
+
+    this.homey.flow.getActionCard('start_away')
+      .registerRunListener(async ({ device }: FlowArgs<unknown>) => {
+        await device.flowSetAway(true);
+      });
+
+    this.homey.flow.getActionCard('stop_away')
+      .registerRunListener(async ({ device }: FlowArgs<unknown>) => {
+        await device.flowSetAway(false);
+      });
+
+    this.homey.flow.getActionCard('prime_pod')
+      .registerRunListener(async ({ device }: FlowArgs<unknown>) => {
+        await device.flowPrime();
       });
 
     this.homey.flow.getActionCard('set_one_off_alarm')

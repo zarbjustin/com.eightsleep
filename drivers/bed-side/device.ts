@@ -28,7 +28,8 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
     'onoff', 'target_temperature', 'measure_temperature', 'measure_temperature.room',
     'alarm_presence', 'measure_heart_rate', 'measure_hrv', 'measure_breath_rate',
     'sleep_stage', 'sleep_fitness_score', 'sleep_quality_score', 'sleep_routine_score', 'time_slept',
-    'next_alarm', 'button.alarm_snooze', 'button.alarm_stop',
+    'next_alarm', 'away_mode', 'alarm_water_low', 'is_priming',
+    'button.alarm_snooze', 'button.alarm_stop', 'button.prime',
   ];
 
   private static readonly SNOOZE_MINUTES = 9;
@@ -53,6 +54,14 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
     this.registerCapabilityListener('button.alarm_stop', async () => {
       if (!this.nextAlarmId) throw new Error('No alarm to stop.');
       await this.client.dismissAlarm(this.userId(), this.nextAlarmId);
+    });
+
+    this.registerCapabilityListener('away_mode', async (value: boolean) => {
+      await this.client.setAwayMode(this.userId(), value ? 'start' : 'end');
+    });
+
+    this.registerCapabilityListener('button.prime', async () => {
+      await this.client.primePod(this.deviceId(), this.userId());
     });
 
     await this.refresh();
@@ -80,6 +89,10 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
   private userId(): string {
     return this.getStoreValue('userId');
+  }
+
+  private deviceId(): string {
+    return this.getStoreValue('deviceId');
   }
 
   private async refresh(): Promise<void> {
@@ -137,6 +150,16 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
     await this.fireStateTriggers(m.bedPresence, m.sleepStage);
     await this.refreshNextAlarm(set);
+    await this.refreshDeviceStatus(set);
+  }
+
+  private async refreshDeviceStatus(
+    set: (cap: string, value: number | boolean | string | null) => Promise<void>,
+  ): Promise<void> {
+    const status = await this.client.getDeviceStatus(this.deviceId());
+    await set('alarm_water_low', status.hasWater === null ? null : !status.hasWater);
+    await set('is_priming', status.isPriming);
+    await set('away_mode', status.awayUserIds.includes(this.userId()));
   }
 
   private async fireStateTriggers(presence: boolean | null, stage: string | null): Promise<void> {
@@ -220,6 +243,19 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
   async flowSetOneOffAlarm(time: string): Promise<void> {
     await this.client.setOneOffAlarm(this.userId(), { time });
+  }
+
+  async flowSetAway(on: boolean): Promise<void> {
+    await this.client.setAwayMode(this.userId(), on ? 'start' : 'end');
+    await this.setCapabilityValue('away_mode', on).catch(() => undefined);
+  }
+
+  async flowPrime(): Promise<void> {
+    await this.client.primePod(this.deviceId(), this.userId());
+  }
+
+  isAway(): boolean {
+    return this.getCapabilityValue('away_mode') === true;
   }
 
   isPresent(): boolean {

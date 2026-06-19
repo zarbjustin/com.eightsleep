@@ -106,6 +106,19 @@
             "filter": "driver_id=bed-side"
           }
         ]
+      },
+      {
+        "id": "is_away",
+        "title": {
+          "en": "Away mode !{{is|isn't}} on"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          }
+        ]
       }
     ],
     "actions": [
@@ -201,6 +214,45 @@
         ]
       },
       {
+        "id": "start_away",
+        "title": {
+          "en": "Start away mode"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          }
+        ]
+      },
+      {
+        "id": "stop_away",
+        "title": {
+          "en": "Stop away mode"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          }
+        ]
+      },
+      {
+        "id": "prime_pod",
+        "title": {
+          "en": "Prime the Pod"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=bed-side"
+          }
+        ]
+      },
+      {
         "id": "set_one_off_alarm",
         "title": {
           "en": "Set a one-off alarm"
@@ -243,14 +295,24 @@
         "sleep_routine_score",
         "time_slept",
         "next_alarm",
+        "away_mode",
+        "alarm_water_low",
+        "is_priming",
         "button.alarm_snooze",
-        "button.alarm_stop"
+        "button.alarm_stop",
+        "button.prime"
       ],
       "capabilitiesOptions": {
         "onoff": {
           "title": {
             "en": "Side power"
           }
+        },
+        "button.prime": {
+          "title": {
+            "en": "Prime Pod"
+          },
+          "maintenanceAction": true
         },
         "button.alarm_snooze": {
           "title": {
@@ -364,6 +426,36 @@
       "type": "boolean",
       "title": {
         "en": "Bed presence"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true
+    },
+    "alarm_water_low": {
+      "type": "boolean",
+      "title": {
+        "en": "Water low"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true
+    },
+    "away_mode": {
+      "type": "boolean",
+      "title": {
+        "en": "Away mode"
+      },
+      "getable": true,
+      "setable": true,
+      "uiComponent": "toggle",
+      "insights": true
+    },
+    "is_priming": {
+      "type": "boolean",
+      "title": {
+        "en": "Priming"
       },
       "getable": true,
       "setable": false,
