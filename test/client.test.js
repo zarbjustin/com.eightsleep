@@ -137,6 +137,7 @@ test('getSideMetrics parses biometrics and sleep scores from the latest trend da
       {
         score: 82,
         sleepDuration: 27000,
+        presenceStart: '2026-06-19T23:00:00.000Z',
         sleepQualityScore: { total: 90, hrv: { current: 55 }, respiratoryRate: { current: 14.2 } },
         sleepRoutineScore: { total: 75 },
         sessions: [
@@ -170,6 +171,42 @@ test('getSideMetrics parses biometrics and sleep scores from the latest trend da
   assert.strictEqual(m.sleepQualityScore, 90);
   assert.strictEqual(m.sleepRoutineScore, 75);
   assert.strictEqual(m.timeSleptSeconds, 27000);
+  assert.strictEqual(m.bedPresence, true);
+});
+
+test('getSideMetrics reports bed empty (false) once presence has ended', async () => {
+  const trends = {
+    days: [{
+      score: 80,
+      presenceStart: '2026-06-19T23:00:00.000Z',
+      presenceEnd: '2026-06-20T06:30:00.000Z',
+      sessions: [{ timeseries: { heartRate: [['t1', 55]] }, stages: [{ stage: 'awake' }] }],
+    }],
+  };
+  const { client } = makeClient((url) => {
+    if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
+    if (url.includes('/trends')) return Promise.resolve(okJson(trends));
+    return Promise.resolve(okJson({}));
+  });
+  const m = await client.getSideMetrics('u1', { tz: 'UTC', from: '2026-06-18', to: '2026-06-20' });
+  assert.strictEqual(m.bedPresence, false);
+});
+
+test('getSideMetrics withholds scores while the night is still processing', async () => {
+  const trends = {
+    days: [{
+      processing: true, score: 0, presenceStart: '2026-06-19T23:00:00.000Z', sessions: [],
+    }],
+  };
+  const { client } = makeClient((url) => {
+    if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
+    if (url.includes('/trends')) return Promise.resolve(okJson(trends));
+    return Promise.resolve(okJson({}));
+  });
+  const m = await client.getSideMetrics('u1', { tz: 'UTC', from: '2026-06-18', to: '2026-06-20' });
+  assert.strictEqual(m.sleepFitnessScore, null);
   assert.strictEqual(m.bedPresence, true);
 });
 

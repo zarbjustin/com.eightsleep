@@ -1,7 +1,7 @@
 'use strict';
 
 import Homey from 'homey';
-import { createClient, EightSleepClient } from '../../lib/EightSleepClient';
+import { EightSleepClient } from '../../lib/EightSleepClient';
 import { celsiusToLevel, levelToCelsius } from '../../lib/temperature';
 
 interface BedSideStore {
@@ -10,6 +10,11 @@ interface BedSideStore {
   side: 'left' | 'right' | 'solo';
   email: string;
   password: string;
+}
+
+interface EightSleepAppApi {
+  getClient(email: string, password: string): EightSleepClient;
+  releaseClient(email: string, password: string): void;
 }
 
 module.exports = class EightSleepBedSideDevice extends Homey.Device {
@@ -38,6 +43,8 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
   async onInit(): Promise<void> {
     await this.ensureCapabilities();
+    this.lastPresence = this.getStoreValue('lastPresence') ?? null;
+    this.lastStage = this.getStoreValue('lastStage') ?? null;
     this.client = this.buildClient();
 
     this.registerCapabilityListener('onoff', async (value: boolean) => {
@@ -82,11 +89,14 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
   private buildClient(): EightSleepClient {
     const store = this.getStore() as BedSideStore;
-    return createClient({
-      email: store.email,
-      password: store.password,
-      log: (...args: unknown[]) => this.log(...args),
-    });
+    const app = this.homey.app as unknown as EightSleepAppApi;
+    return app.getClient(store.email, store.password);
+  }
+
+  private releaseClient(): void {
+    const store = this.getStore() as BedSideStore;
+    const app = this.homey.app as unknown as EightSleepAppApi;
+    app.releaseClient(store.email, store.password);
   }
 
   private userId(): string {
@@ -99,12 +109,15 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
   private async refresh(): Promise<void> {
     let reachable = false;
+    let lastError: unknown = null;
+
     try {
       const state = await this.client.getSideState(this.userId());
       await this.setCapabilityValue('onoff', state.isOn);
       await this.setCapabilityValue('target_temperature', levelToCelsius(state.currentLevel));
       reachable = true;
     } catch (err) {
+      lastError = err;
       this.error('Failed to refresh Eight Sleep state', err);
     }
 
@@ -112,6 +125,7 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
       await this.refreshMetrics();
       reachable = true;
     } catch (err) {
+      lastError = err;
       this.error('Failed to refresh Eight Sleep metrics', err);
     }
 
@@ -124,8 +138,18 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
     if (reachable) {
       if (!this.getAvailable()) await this.setAvailable();
     } else {
-      await this.setUnavailable('Could not reach Eight Sleep.').catch(() => undefined);
+      await this.setUnavailable(this.unavailableMessage(lastError)).catch(() => undefined);
     }
+  }
+
+  private unavailableMessage(err: unknown): string {
+    const status = (err && typeof err === 'object' && 'status' in err)
+      ? (err as { status?: number }).status : undefined;
+    if (status === 401 || status === 400) {
+      return 'Eight Sleep credentials expired — use Repair to re-enter your password.';
+    }
+    if (status === 429) return 'Eight Sleep rate limit reached — will retry automatically.';
+    return 'Could not reach Eight Sleep. Check your internet connection.';
   }
 
   private async refreshMetrics(): Promise<void> {
@@ -219,6 +243,7 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
         await this.homey.flow.getDeviceTriggerCard(card).trigger(this, {}, {}).catch((e) => this.error('trigger', e));
       }
       this.lastPresence = presence;
+      await this.setStoreValue('lastPresence', presence).catch(() => undefined);
     }
 
     if (stage !== null && stage !== this.lastStage) {
@@ -227,6 +252,7 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
           .trigger(this, { stage }, {}).catch((e) => this.error('trigger', e));
       }
       this.lastStage = stage;
+      await this.setStoreValue('lastStage', stage).catch(() => undefined);
     }
   }
 
@@ -243,7 +269,8 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
     const when = new Date(alarm.nextTimestamp);
     const tz = this.homey.clock.getTimezone();
-    const label = when.toLocaleString('en-GB', {
+    const lang = this.homey.i18n.getLanguage() || 'en-GB';
+    const label = when.toLocaleString(lang, {
       weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: tz,
     });
     await set('next_alarm', label);
@@ -334,10 +361,12 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
   async onUninit(): Promise<void> {
     this.stopPolling();
+    this.releaseClient();
   }
 
   async onDeleted(): Promise<void> {
     this.stopPolling();
+    this.releaseClient();
   }
 
 };

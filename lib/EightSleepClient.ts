@@ -8,6 +8,7 @@ import {
   BACKOFF_BASE_MS,
   BACKOFF_MAX_MS,
   CLIENT_API_URL,
+  DEFAULT_TIMEOUT_MS,
   KNOWN_CLIENT_ID,
   KNOWN_CLIENT_SECRET,
   MAX_RETRIES,
@@ -40,6 +41,27 @@ function lastSample(arr?: Array<[string, number]>): number | null {
   if (!Array.isArray(arr) || arr.length === 0) return null;
   const v = arr[arr.length - 1]?.[1];
   return typeof v === 'number' && Number.isFinite(v) ? v : null;
+}
+
+/** Epoch ms of the last sample's timestamp, or null. */
+function lastSampleTime(arr?: Array<[string, number]>): number | null {
+  if (!Array.isArray(arr) || arr.length === 0) return null;
+  const t = Date.parse(arr[arr.length - 1]?.[0]);
+  return Number.isFinite(t) ? t : null;
+}
+
+/**
+ * Determine whether someone is currently in bed. Prefers the explicit
+ * presenceStart/presenceEnd markers from the trend day; falls back to a recent
+ * (<15 min) live heart-rate sample. Returns false (not null) when there is no
+ * evidence of presence so the "bed empty" trigger can fire.
+ */
+function computePresence(day: TrendDay, ts: { heartRate?: Array<[string, number]> }, now: number): boolean {
+  if (day.presenceEnd) return false;
+  if (day.presenceStart) return true;
+  const hrTime = lastSampleTime(ts.heartRate);
+  if (hrTime !== null) return now - hrTime <= 15 * 60 * 1000;
+  return false;
 }
 
 /** Coerce an API value to a finite number, treating null/"None" as null. */
@@ -147,7 +169,7 @@ export class EightSleepClient {
   }
 
   private async login(): Promise<Token> {
-    const res = await this.limiter.run(() => this.fetchImpl(AUTH_URL, {
+    const res = await this.limiter.run(() => this.timedFetch(AUTH_URL, {
       method: 'post',
       headers: AUTH_HEADERS,
       body: JSON.stringify({
@@ -184,7 +206,7 @@ export class EightSleepClient {
   }
 
   private async resolveUserId(accessToken: string): Promise<string> {
-    const res = await this.limiter.run(() => this.fetchImpl(`${CLIENT_API_URL}/users/me`, {
+    const res = await this.limiter.run(() => this.timedFetch(`${CLIENT_API_URL}/users/me`, {
       method: 'get',
       headers: { ...API_HEADERS, authorization: `Bearer ${accessToken}` },
     }));
@@ -215,7 +237,7 @@ export class EightSleepClient {
     didReauth: boolean,
   ): Promise<T> {
     const token = this.token as Token;
-    const res = await this.limiter.run(() => this.fetchImpl(url, {
+    const res = await this.limiter.run(() => this.timedFetch(url, {
       method,
       headers: { ...API_HEADERS, authorization: `Bearer ${token.accessToken}` },
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -251,6 +273,17 @@ export class EightSleepClient {
     }
   }
 
+  /** Perform a fetch that rejects if it does not settle within the timeout. */
+  private timedFetch(url: string, init?: Parameters<FetchFn>[1]): Promise<FetchResponse> {
+    let timer: NodeJS.Timeout | undefined;
+    const timeout = new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => reject(new EightSleepError('Eight Sleep request timed out.')), DEFAULT_TIMEOUT_MS);
+    });
+    return Promise.race([this.fetchImpl(url, init), timeout]).finally(() => {
+      if (timer) clearTimeout(timer);
+    }) as Promise<FetchResponse>;
+  }
+
   /** Return the raw /users/me payload. */
   async getMe(): Promise<{ user?: { userId?: string; devices?: string[]; currentDevice?: { id?: string; side?: string } } }> {
     return this.apiRequest('get', `${CLIENT_API_URL}/users/me`);
@@ -272,23 +305,22 @@ export class EightSleepClient {
   async discoverBedSides(): Promise<BedSideRef[]> {
     const me = await this.getMe();
     const deviceIds = me.user?.devices ?? [];
-    const sides: BedSideRef[] = [];
 
-    for (const deviceId of deviceIds) {
-      // eslint-disable-next-line no-await-in-loop
+    const perDevice = await Promise.all(deviceIds.map(async (deviceId): Promise<BedSideRef[]> => {
       const device = await this.getDevice(deviceId);
       const left = device.result?.leftUserId;
       const right = device.result?.rightUserId;
       if (left && right && left !== right) {
-        sides.push({ deviceId, userId: left, side: 'left' });
-        sides.push({ deviceId, userId: right, side: 'right' });
-      } else {
-        const solo = left || right;
-        if (solo) sides.push({ deviceId, userId: solo, side: 'solo' });
+        return [
+          { deviceId, userId: left, side: 'left' },
+          { deviceId, userId: right, side: 'right' },
+        ];
       }
-    }
+      const solo = left || right;
+      return solo ? [{ deviceId, userId: solo, side: 'solo' }] : [];
+    }));
 
-    return sides;
+    return perDevice.flat();
   }
 
   /**
@@ -356,22 +388,26 @@ export class EightSleepClient {
     const sessions = Array.isArray(day.sessions) ? day.sessions : [];
     const session = sessions.length ? sessions[sessions.length - 1] : undefined;
     const ts = session?.timeseries ?? {};
+    const now = this.now();
 
     const heartRate = lastSample(ts.heartRate);
 
+    // While Eight Sleep is still processing the night, scores can be partial or
+    // zero — withhold them (return null) rather than logging garbage.
+    const processing = day.processing === true;
+    const score = (value: unknown): number | null => (processing ? null : numOrNull(value));
+
     return {
-      // Presence is inferred from a live heart-rate signal (the cloud API has
-      // no reliable explicit presence flag). Refined in a later sprint.
-      bedPresence: heartRate !== null ? true : null,
+      bedPresence: computePresence(day, ts, now),
       heartRate,
       hrv: numOrNull(day.sleepQualityScore?.hrv?.current),
       breathRate: numOrNull(day.sleepQualityScore?.respiratoryRate?.current),
       roomTemp: lastSample(ts.tempRoomC),
       bedTemp: lastSample(ts.tempBedC),
       sleepStage: latestStage(session),
-      sleepFitnessScore: numOrNull(day.score),
-      sleepQualityScore: numOrNull(day.sleepQualityScore?.total),
-      sleepRoutineScore: numOrNull(day.sleepRoutineScore?.total),
+      sleepFitnessScore: score(day.score),
+      sleepQualityScore: score(day.sleepQualityScore?.total),
+      sleepRoutineScore: score(day.sleepRoutineScore?.total),
       timeSleptSeconds: numOrNull(day.sleepDuration),
     };
   }
