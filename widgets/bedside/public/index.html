@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { color-scheme: dark; }
+    html, body {
+      margin: 0; padding: 0;
+      font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: transparent; color: #E8EEF4;
+    }
+    .card {
+      box-sizing: border-box; height: 240px; padding: 14px 16px;
+      background: linear-gradient(160deg, #0E1F35 0%, #0A1828 100%);
+      border-radius: 12px; display: flex; flex-direction: column; gap: 10px;
+    }
+    .top { display: flex; align-items: center; justify-content: space-between; }
+    select {
+      background: #14283f; color: #E8EEF4; border: 1px solid #24405e;
+      border-radius: 8px; padding: 4px 8px; font-size: 13px; max-width: 60%;
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: #3a5572; display: inline-block; }
+    .dot.on { background: #58d68d; box-shadow: 0 0 8px #58d68d88; }
+    .temp { display: flex; align-items: center; justify-content: center; gap: 14px; }
+    .temp .value { font-size: 40px; font-weight: 700; min-width: 96px; text-align: center; }
+    .temp button {
+      width: 40px; height: 40px; border-radius: 50%; border: 1px solid #24405e;
+      background: #14283f; color: #E8EEF4; font-size: 22px; cursor: pointer;
+    }
+    .temp button:active { background: #1d3a57; }
+    .stats { display: flex; justify-content: space-around; font-size: 12px; color: #9fb4c9; }
+    .stats b { display: block; color: #E8EEF4; font-size: 16px; }
+    .power {
+      border: none; border-radius: 10px; padding: 9px; font-size: 14px; font-weight: 600;
+      cursor: pointer; background: #24405e; color: #E8EEF4;
+    }
+    .power.on { background: #1f7a4d; }
+    .muted { color: #9fb4c9; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="top">
+      <select id="side"></select>
+      <span><span class="dot" id="presence"></span> <span class="muted" id="presenceLabel">—</span></span>
+    </div>
+
+    <div class="temp">
+      <button id="down" type="button">−</button>
+      <div class="value"><span id="target">—</span><span style="font-size:18px">°C</span></div>
+      <button id="up" type="button">+</button>
+    </div>
+
+    <div class="stats">
+      <div>Bed<b id="bedTemp">—</b></div>
+      <div>Heart<b id="hr">—</b></div>
+      <div>Stage<b id="stage">—</b></div>
+    </div>
+
+    <button class="power" id="power" type="button">Power</button>
+  </div>
+
+  <script type="text/javascript">
+    function onHomeyReady(Homey) {
+      const el = (id) => document.getElementById(id);
+      let currentId = null;
+      let state = null;
+
+      function render() {
+        if (!state) return;
+        el('target').textContent = state.target == null ? '—' : Number(state.target).toFixed(1);
+        el('bedTemp').textContent = state.bedTemp == null ? '—' : Number(state.bedTemp).toFixed(1) + '°';
+        el('hr').textContent = state.heartRate == null ? '—' : Math.round(state.heartRate);
+        el('stage').textContent = state.stage || '—';
+        el('presence').className = 'dot' + (state.presence ? ' on' : '');
+        el('presenceLabel').textContent = state.presence ? 'In bed' : 'Empty';
+        const power = el('power');
+        power.classList.toggle('on', !!state.on);
+        power.textContent = state.on ? 'On' : 'Off';
+      }
+
+      async function load(id) {
+        try {
+          state = await Homey.api('GET', '/state' + (id ? ('?id=' + encodeURIComponent(id)) : ''));
+          currentId = state.id;
+          render();
+        } catch (e) { el('presenceLabel').textContent = 'Unavailable'; }
+      }
+
+      async function setTemp(delta) {
+        if (!state || state.target == null) return;
+        const next = Math.max(13, Math.min(44, Number(state.target) + delta));
+        state = await Homey.api('POST', '/temperature', { id: currentId, celsius: next });
+        render();
+      }
+
+      el('down').addEventListener('click', () => setTemp(-0.5));
+      el('up').addEventListener('click', () => setTemp(0.5));
+      el('power').addEventListener('click', async () => {
+        if (!state) return;
+        state = await Homey.api('POST', '/power', { id: currentId, on: !state.on });
+        render();
+      });
+      el('side').addEventListener('change', (ev) => load(ev.target.value));
+
+      Homey.api('GET', '/sides').then((sides) => {
+        const sel = el('side');
+        sel.innerHTML = '';
+        (sides || []).forEach((s) => {
+          const opt = document.createElement('option');
+          opt.value = s.id; opt.textContent = s.name;
+          sel.appendChild(opt);
+        });
+        if (!sides || sides.length <= 1) sel.style.visibility = 'hidden';
+        load(sides && sides[0] ? sides[0].id : null);
+      }).catch(() => load(null));
+
+      setInterval(() => load(currentId), 60000);
+      Homey.ready();
+    }
+  </script>
+</body>
+</html>

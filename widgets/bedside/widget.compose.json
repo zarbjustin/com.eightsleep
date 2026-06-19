@@ -1,0 +1,25 @@
+{
+  "name": {
+    "en": "Eight Sleep"
+  },
+  "height": 240,
+  "transparent": false,
+  "api": {
+    "getSides": {
+      "method": "GET",
+      "path": "/sides"
+    },
+    "getState": {
+      "method": "GET",
+      "path": "/state"
+    },
+    "setPower": {
+      "method": "POST",
+      "path": "/power"
+    },
+    "setTemperature": {
+      "method": "POST",
+      "path": "/temperature"
+    }
+  }
+}

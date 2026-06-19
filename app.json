@@ -421,6 +421,35 @@
       "id": "bed-side"
     }
   ],
+  "widgets": {
+    "bedside": {
+      "name": {
+        "en": "Eight Sleep"
+      },
+      "height": 240,
+      "transparent": false,
+      "api": {
+        "getSides": {
+          "method": "GET",
+          "path": "/sides"
+        },
+        "getState": {
+          "method": "GET",
+          "path": "/state"
+        },
+        "setPower": {
+          "method": "POST",
+          "path": "/power"
+        },
+        "setTemperature": {
+          "method": "POST",
+          "path": "/temperature"
+        }
+      },
+      "id": "bedside",
+      "settings": []
+    }
+  },
   "capabilities": {
     "alarm_presence": {
       "type": "boolean",

@@ -308,6 +308,22 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
     return this.getCapabilityValue('away_mode') === true;
   }
 
+  /** Snapshot of the side's state for the dashboard widget. */
+  getWidgetState(): {
+    name: string; on: boolean; target: number | null; bedTemp: number | null;
+    presence: boolean; heartRate: number | null; stage: string | null;
+    } {
+    return {
+      name: this.getName(),
+      on: this.getCapabilityValue('onoff') === true,
+      target: this.getCapabilityValue('target_temperature') ?? null,
+      bedTemp: this.getCapabilityValue('measure_temperature') ?? null,
+      presence: this.getCapabilityValue('alarm_presence') === true,
+      heartRate: this.getCapabilityValue('measure_heart_rate') ?? null,
+      stage: this.getCapabilityValue('sleep_stage') ?? null,
+    };
+  }
+
   isPresent(): boolean {
     return this.getCapabilityValue('alarm_presence') === true;
   }
