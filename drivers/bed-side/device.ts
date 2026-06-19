@@ -24,6 +24,8 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
   private lastStage: string | null = null;
 
+  private baseBound = false;
+
   private static readonly CAPABILITIES = [
     'onoff', 'target_temperature', 'measure_temperature', 'measure_temperature.room',
     'alarm_presence', 'measure_heart_rate', 'measure_hrv', 'measure_breath_rate',
@@ -113,6 +115,12 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
       this.error('Failed to refresh Eight Sleep metrics', err);
     }
 
+    try {
+      await this.refreshBase();
+    } catch (err) {
+      this.error('Failed to refresh Eight Sleep base', err);
+    }
+
     if (reachable) {
       if (!this.getAvailable()) await this.setAvailable();
     } else {
@@ -160,6 +168,48 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
     await set('alarm_water_low', status.hasWater === null ? null : !status.hasWater);
     await set('is_priming', status.isPriming);
     await set('away_mode', status.awayUserIds.includes(this.userId()));
+  }
+
+  /** Detect and reflect an adjustable base, adding its capabilities on demand. */
+  private async refreshBase(): Promise<void> {
+    const side = this.getStoreValue('side');
+    const base = await this.client.getBase(this.userId(), side);
+    if (!base) return;
+
+    await this.bindBaseCapabilities();
+
+    const set = async (cap: string, value: number | boolean | string | null): Promise<void> => {
+      await this.setCapabilityValue(cap, value).catch((err) => this.error(`setCapabilityValue ${cap}`, err));
+    };
+    await set('base_head_angle', base.torsoAngle);
+    await set('base_feet_angle', base.legAngle);
+    await set('base_snore_mitigation', base.snoreMitigation);
+    if (base.preset) await set('base_preset', base.preset);
+  }
+
+  private async bindBaseCapabilities(): Promise<void> {
+    if (this.baseBound) return;
+    this.baseBound = true;
+
+    for (const cap of ['base_head_angle', 'base_feet_angle', 'base_snore_mitigation', 'base_preset']) {
+      if (!this.hasCapability(cap)) {
+        await this.addCapability(cap).catch((err) => this.error(`addCapability ${cap}`, err));
+      }
+    }
+
+    this.registerCapabilityListener('base_head_angle', async (value: number) => {
+      const feet = Number(this.getCapabilityValue('base_feet_angle') ?? 0);
+      await this.client.setBaseAngle(this.userId(), this.deviceId(), feet, value);
+    });
+
+    this.registerCapabilityListener('base_feet_angle', async (value: number) => {
+      const head = Number(this.getCapabilityValue('base_head_angle') ?? 0);
+      await this.client.setBaseAngle(this.userId(), this.deviceId(), value, head);
+    });
+
+    this.registerCapabilityListener('base_preset', async (value: string) => {
+      await this.client.setBasePreset(this.userId(), this.deviceId(), value);
+    });
   }
 
   private async fireStateTriggers(presence: boolean | null, stage: string | null): Promise<void> {

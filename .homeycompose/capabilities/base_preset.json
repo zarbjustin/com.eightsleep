@@ -1,0 +1,35 @@
+{
+  "type": "enum",
+  "title": {
+    "en": "Base preset"
+  },
+  "getable": true,
+  "setable": true,
+  "uiComponent": "picker",
+  "values": [
+    {
+      "id": "sleep",
+      "title": {
+        "en": "Sleep"
+      }
+    },
+    {
+      "id": "relaxing",
+      "title": {
+        "en": "Relaxing"
+      }
+    },
+    {
+      "id": "reading",
+      "title": {
+        "en": "Reading"
+      }
+    },
+    {
+      "id": "flat",
+      "title": {
+        "en": "Flat"
+      }
+    }
+  ]
+}

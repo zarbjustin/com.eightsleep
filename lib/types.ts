@@ -117,3 +117,19 @@ export interface OneOffAlarmOptions {
   thermalEnabled?: boolean;
   thermalLevel?: number;
 }
+
+/** Raw per-side base data as returned by the base endpoint. */
+export interface BaseSideData {
+  leg?: { currentAngle?: number };
+  torso?: { currentAngle?: number };
+  inSnoreMitigation?: boolean;
+  preset?: { name?: string };
+}
+
+/** Normalised adjustable-base state for a side. */
+export interface BaseSummary {
+  legAngle: number;
+  torsoAngle: number;
+  snoreMitigation: boolean;
+  preset: string | null;
+}

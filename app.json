@@ -452,6 +452,85 @@
       "uiComponent": "toggle",
       "insights": true
     },
+    "base_feet_angle": {
+      "type": "number",
+      "title": {
+        "en": "Feet angle"
+      },
+      "units": {
+        "en": "°"
+      },
+      "min": 0,
+      "max": 45,
+      "step": 1,
+      "decimals": 0,
+      "getable": true,
+      "setable": true,
+      "uiComponent": "slider",
+      "insights": true
+    },
+    "base_head_angle": {
+      "type": "number",
+      "title": {
+        "en": "Head angle"
+      },
+      "units": {
+        "en": "°"
+      },
+      "min": 0,
+      "max": 45,
+      "step": 1,
+      "decimals": 0,
+      "getable": true,
+      "setable": true,
+      "uiComponent": "slider",
+      "insights": true
+    },
+    "base_preset": {
+      "type": "enum",
+      "title": {
+        "en": "Base preset"
+      },
+      "getable": true,
+      "setable": true,
+      "uiComponent": "picker",
+      "values": [
+        {
+          "id": "sleep",
+          "title": {
+            "en": "Sleep"
+          }
+        },
+        {
+          "id": "relaxing",
+          "title": {
+            "en": "Relaxing"
+          }
+        },
+        {
+          "id": "reading",
+          "title": {
+            "en": "Reading"
+          }
+        },
+        {
+          "id": "flat",
+          "title": {
+            "en": "Flat"
+          }
+        }
+      ]
+    },
+    "base_snore_mitigation": {
+      "type": "boolean",
+      "title": {
+        "en": "Snore mitigation"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true
+    },
     "is_priming": {
       "type": "boolean",
       "title": {

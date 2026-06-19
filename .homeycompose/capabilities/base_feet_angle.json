@@ -1,0 +1,17 @@
+{
+  "type": "number",
+  "title": {
+    "en": "Feet angle"
+  },
+  "units": {
+    "en": "°"
+  },
+  "min": 0,
+  "max": 45,
+  "step": 1,
+  "decimals": 0,
+  "getable": true,
+  "setable": true,
+  "uiComponent": "slider",
+  "insights": true
+}

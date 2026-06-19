@@ -16,7 +16,7 @@ import {
 } from './constants';
 import { RateLimiter } from './RateLimiter';
 import type {
-  BedSideRef, EightSleepAlarm, EightSleepConfig, FetchFn, FetchResponse, HttpMethod, OneOffAlarmOptions, SideMetrics, Token, TrendDay, TrendSession,
+  BaseSideData, BaseSummary, BedSideRef, EightSleepAlarm, EightSleepConfig, FetchFn, FetchResponse, HttpMethod, OneOffAlarmOptions, SideMetrics, Token, TrendDay, TrendSession,
 } from './types';
 
 /** Error thrown for any non-recoverable API failure. */
@@ -488,6 +488,48 @@ export class EightSleepClient {
       needsPriming: typeof r.needsPriming === 'boolean' ? r.needsPriming : null,
       awayUserIds: r.awaySides ? Object.values(r.awaySides) : [],
     };
+  }
+
+  /**
+   * Return the adjustable-base state for a side, or null when no base is
+   * paired (the endpoint errors or returns no per-side data).
+   */
+  async getBase(userId: string, side: 'left' | 'right' | 'solo'): Promise<BaseSummary | null> {
+    let data: Record<string, BaseSideData> | undefined;
+    try {
+      data = await this.apiRequest<Record<string, BaseSideData>>('get', `${APP_API_URL}v1/users/${userId}/base`);
+    } catch {
+      return null;
+    }
+    if (!data || typeof data !== 'object') return null;
+    const key = side === 'right' ? 'right' : 'left';
+    const s = data[key] ?? data.left ?? data.right;
+    if (!s || typeof s !== 'object') return null;
+    return {
+      legAngle: Number(s.leg?.currentAngle ?? 0),
+      torsoAngle: Number(s.torso?.currentAngle ?? 0),
+      snoreMitigation: s.inSnoreMitigation === true,
+      preset: s.preset?.name ?? null,
+    };
+  }
+
+  /** Set the adjustable base leg + torso angles. */
+  async setBaseAngle(userId: string, deviceId: string, legAngle: number, torsoAngle: number): Promise<void> {
+    await this.apiRequest('put', `${APP_API_URL}v1/users/${userId}/base/angle?ignoreDeviceErrors=false`, {
+      deviceId,
+      deviceOnline: true,
+      legAngle: Math.round(legAngle),
+      torsoAngle: Math.round(torsoAngle),
+    });
+  }
+
+  /** Apply a named base preset (sleep / relaxing / reading / flat). */
+  async setBasePreset(userId: string, deviceId: string, preset: string): Promise<void> {
+    await this.apiRequest('put', `${APP_API_URL}v1/users/${userId}/base/angle?ignoreDeviceErrors=false`, {
+      deviceId,
+      deviceOnline: true,
+      preset,
+    });
   }
 
   private async safeText(res: FetchResponse): Promise<string> {
