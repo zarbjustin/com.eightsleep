@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-  <g fill="none" stroke="#000000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M8 40 L8 24 Q8 20 12 20 L52 20 Q56 20 56 24 L56 40"/>
-    <path d="M8 40 L56 40 L56 46"/>
-    <path d="M8 40 L8 46"/>
-    <rect x="14" y="24" width="16" height="10" rx="3"/>
-    <rect x="34" y="24" width="16" height="10" rx="3"/>
-  </g>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <mask id="eight">
+      <rect x="92" y="8" width="328" height="252" rx="94" fill="#ffffff"/>
+      <rect x="92" y="252" width="328" height="252" rx="94" fill="#ffffff"/>
+      <rect x="182" y="84" width="148" height="104" rx="34" fill="#000000"/>
+      <rect x="182" y="324" width="148" height="104" rx="34" fill="#000000"/>
+    </mask>
+  </defs>
+  <rect width="512" height="512" fill="#000000" mask="url(#eight)"/>
 </svg>
