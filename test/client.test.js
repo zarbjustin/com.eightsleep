@@ -203,3 +203,39 @@ test('setSidePower PUTs smart when on and off when off', async () => {
     { currentState: { type: 'off' } },
   ]);
 });
+
+test('getNextAlarm picks the soonest enabled, not-yet-finished alarm', async () => {
+  const future = (mins) => new Date(Date.now() + mins * 60000).toISOString();
+  const past = (mins) => new Date(Date.now() - mins * 60000).toISOString();
+  const alarms = {
+    alarms: [
+      { id: 'a-disabled', enabled: false, nextTimestamp: future(10) },
+      { id: 'a-late', enabled: true, nextTimestamp: future(120) },
+      { id: 'a-soon', enabled: true, nextTimestamp: future(30) },
+      { id: 'a-done', enabled: true, nextTimestamp: past(60), endTimestamp: past(30) },
+    ],
+  };
+  const { client } = makeClient((url) => {
+    if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
+    if (url.includes('/alarms')) return Promise.resolve(okJson(alarms));
+    return Promise.resolve(okJson({}));
+  });
+
+  const next = await client.getNextAlarm('u1');
+  assert.strictEqual(next.id, 'a-soon');
+});
+
+test('snoozeAlarm PUTs snoozeMinutes to the alarm snooze endpoint', async () => {
+  let captured = null;
+  const { client } = makeClient((url, init) => {
+    if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
+    if (url.includes('/snooze')) { captured = { url, init }; return Promise.resolve(okJson({})); }
+    return Promise.resolve(okJson({}));
+  });
+
+  await client.snoozeAlarm('u1', 'alarm-9', 9);
+  assert.ok(captured.url.endsWith('/v1/users/u1/alarms/alarm-9/snooze'));
+  assert.deepStrictEqual(JSON.parse(captured.init.body), { snoozeMinutes: 9, ignoreDeviceErrors: false });
+});

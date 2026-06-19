@@ -18,11 +18,16 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
   private pollTimer: NodeJS.Timeout | null = null;
 
+  private nextAlarmId: string | null = null;
+
   private static readonly CAPABILITIES = [
     'onoff', 'target_temperature', 'measure_temperature', 'measure_temperature.room',
     'alarm_presence', 'measure_heart_rate', 'measure_hrv', 'measure_breath_rate',
     'sleep_stage', 'sleep_fitness_score', 'sleep_quality_score', 'sleep_routine_score', 'time_slept',
+    'next_alarm', 'button.alarm_snooze', 'button.alarm_stop',
   ];
+
+  private static readonly SNOOZE_MINUTES = 9;
 
   async onInit(): Promise<void> {
     await this.ensureCapabilities();
@@ -34,6 +39,16 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
     this.registerCapabilityListener('target_temperature', async (value: number) => {
       await this.client.setSideLevel(this.userId(), celsiusToLevel(value));
+    });
+
+    this.registerCapabilityListener('button.alarm_snooze', async () => {
+      if (!this.nextAlarmId) throw new Error('No alarm to snooze.');
+      await this.client.snoozeAlarm(this.userId(), this.nextAlarmId, EightSleepBedSideDevice.SNOOZE_MINUTES);
+    });
+
+    this.registerCapabilityListener('button.alarm_stop', async () => {
+      if (!this.nextAlarmId) throw new Error('No alarm to stop.');
+      await this.client.dismissAlarm(this.userId(), this.nextAlarmId);
     });
 
     await this.refresh();
@@ -115,6 +130,27 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
     await set('sleep_quality_score', m.sleepQualityScore);
     await set('sleep_routine_score', m.sleepRoutineScore);
     await set('time_slept', m.timeSleptSeconds === null ? null : Math.round((m.timeSleptSeconds / 3600) * 10) / 10);
+
+    await this.refreshNextAlarm(set);
+  }
+
+  private async refreshNextAlarm(
+    set: (cap: string, value: number | boolean | string | null) => Promise<void>,
+  ): Promise<void> {
+    const alarm = await this.client.getNextAlarm(this.userId());
+    this.nextAlarmId = alarm?.id ?? null;
+
+    if (!alarm?.nextTimestamp) {
+      await set('next_alarm', null);
+      return;
+    }
+
+    const when = new Date(alarm.nextTimestamp);
+    const tz = this.homey.clock.getTimezone();
+    const label = when.toLocaleString('en-GB', {
+      weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: tz,
+    });
+    await set('next_alarm', label);
   }
 
   private startPolling(): void {

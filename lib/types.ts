@@ -95,3 +95,25 @@ export interface SideMetrics {
   sleepRoutineScore: number | null;
   timeSleptSeconds: number | null;
 }
+
+/** A single alarm as returned by the v2 alarms endpoint. */
+export interface EightSleepAlarm {
+  id: string;
+  enabled?: boolean;
+  time?: string;
+  nextTimestamp?: string;
+  startTimestamp?: string;
+  endTimestamp?: string;
+  snoozing?: boolean;
+}
+
+/** Options for creating a one-off alarm. */
+export interface OneOffAlarmOptions {
+  time: string;
+  enabled?: boolean;
+  vibrationEnabled?: boolean;
+  vibrationPowerLevel?: number;
+  vibrationPattern?: string;
+  thermalEnabled?: boolean;
+  thermalLevel?: number;
+}

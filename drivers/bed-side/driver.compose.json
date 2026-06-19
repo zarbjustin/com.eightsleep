@@ -16,13 +16,28 @@
     "sleep_fitness_score",
     "sleep_quality_score",
     "sleep_routine_score",
-    "time_slept"
+    "time_slept",
+    "next_alarm",
+    "button.alarm_snooze",
+    "button.alarm_stop"
   ],
   "capabilitiesOptions": {
     "onoff": {
       "title": {
         "en": "Side power"
       }
+    },
+    "button.alarm_snooze": {
+      "title": {
+        "en": "Snooze alarm"
+      },
+      "maintenanceAction": true
+    },
+    "button.alarm_stop": {
+      "title": {
+        "en": "Stop alarm"
+      },
+      "maintenanceAction": true
     },
     "target_temperature": {
       "title": {

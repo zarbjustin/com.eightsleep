@@ -16,7 +16,7 @@ import {
 } from './constants';
 import { RateLimiter } from './RateLimiter';
 import type {
-  BedSideRef, EightSleepConfig, FetchFn, FetchResponse, HttpMethod, SideMetrics, Token, TrendDay, TrendSession,
+  BedSideRef, EightSleepAlarm, EightSleepConfig, FetchFn, FetchResponse, HttpMethod, OneOffAlarmOptions, SideMetrics, Token, TrendDay, TrendSession,
 } from './types';
 
 /** Error thrown for any non-recoverable API failure. */
@@ -240,7 +240,15 @@ export class EightSleepClient {
       throw new EightSleepError(`Eight Sleep API error (HTTP ${res.status}) for ${method.toUpperCase()} ${url}.`, res.status, text);
     }
 
-    return (await res.json()) as T;
+    return (await this.safeJson(res)) as T;
+  }
+
+  private async safeJson(res: FetchResponse): Promise<unknown> {
+    try {
+      return await res.json();
+    } catch {
+      return undefined;
+    }
   }
 
   /** Return the raw /users/me payload. */
@@ -366,6 +374,72 @@ export class EightSleepClient {
       sleepRoutineScore: numOrNull(day.sleepRoutineScore?.total),
       timeSleptSeconds: numOrNull(day.sleepDuration),
     };
+  }
+
+  /** Return all alarms configured for a user. */
+  async getAlarms(userId: string): Promise<EightSleepAlarm[]> {
+    const data = await this.apiRequest<{ alarms?: EightSleepAlarm[] }>(
+      'get',
+      `${APP_API_URL}v2/users/${userId}/alarms`,
+    );
+    return Array.isArray(data?.alarms) ? data.alarms : [];
+  }
+
+  /**
+   * Return the chronologically soonest enabled alarm that has not yet finished
+   * ringing, or null when none is scheduled.
+   */
+  async getNextAlarm(userId: string): Promise<EightSleepAlarm | null> {
+    const alarms = await this.getAlarms(userId);
+    const now = Date.now();
+    let soonest: EightSleepAlarm | null = null;
+    let soonestTime = Infinity;
+
+    for (const alarm of alarms) {
+      if (alarm.enabled === false) continue;
+      const next = alarm.nextTimestamp ? Date.parse(alarm.nextTimestamp) : NaN;
+      if (!Number.isFinite(next)) continue;
+      const end = alarm.endTimestamp ? Date.parse(alarm.endTimestamp) : next;
+      if (Number.isFinite(end) && end < now) continue;
+      if (next < soonestTime) {
+        soonestTime = next;
+        soonest = alarm;
+      }
+    }
+
+    return soonest;
+  }
+
+  /** Snooze a ringing alarm for a number of minutes. */
+  async snoozeAlarm(userId: string, alarmId: string, minutes: number): Promise<void> {
+    await this.apiRequest('put', `${APP_API_URL}v1/users/${userId}/alarms/${alarmId}/snooze`, {
+      snoozeMinutes: Math.max(1, Math.round(minutes)),
+      ignoreDeviceErrors: false,
+    });
+  }
+
+  /** Dismiss (stop) an alarm. */
+  async dismissAlarm(userId: string, alarmId: string): Promise<void> {
+    await this.apiRequest('put', `${APP_API_URL}v1/users/${userId}/alarms/${alarmId}/dismiss`, {
+      ignoreDeviceErrors: false,
+    });
+  }
+
+  /** Create a one-off alarm for a side. */
+  async setOneOffAlarm(userId: string, opts: OneOffAlarmOptions): Promise<void> {
+    await this.apiRequest('post', `${APP_API_URL}v1/users/${userId}/alarms`, {
+      time: opts.time,
+      enabled: opts.enabled ?? true,
+      vibration: {
+        enabled: opts.vibrationEnabled ?? true,
+        powerLevel: opts.vibrationPowerLevel ?? 50,
+        pattern: opts.vibrationPattern ?? 'RISE',
+      },
+      thermal: {
+        enabled: opts.thermalEnabled ?? true,
+        level: opts.thermalLevel ?? 0,
+      },
+    });
   }
 
   private async safeText(res: FetchResponse): Promise<string> {
