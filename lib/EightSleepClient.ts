@@ -2,6 +2,7 @@
 
 import {
   API_HEADERS,
+  APP_API_URL,
   AUTH_HEADERS,
   AUTH_URL,
   BACKOFF_BASE_MS,
@@ -237,6 +238,30 @@ export class EightSleepClient {
     }
 
     return sides;
+  }
+
+  /**
+   * Read a side's current temperature state: the raw heating level and whether
+   * the side is actively running (any state other than "off").
+   */
+  async getSideState(userId: string): Promise<{ currentLevel: number; isOn: boolean; stateType: string }> {
+    const data = await this.apiRequest<{ currentLevel?: number; currentState?: { type?: string } }>(
+      'get',
+      `${APP_API_URL}v1/users/${userId}/temperature`,
+    );
+    const stateType = data?.currentState?.type ?? 'off';
+    return {
+      currentLevel: Number(data?.currentLevel ?? 0),
+      isOn: stateType !== 'off',
+      stateType,
+    };
+  }
+
+  /** Turn a side on (smart mode) or off. */
+  async setSidePower(userId: string, on: boolean): Promise<void> {
+    await this.apiRequest('put', `${APP_API_URL}v1/users/${userId}/temperature`, {
+      currentState: { type: on ? 'smart' : 'off' },
+    });
   }
 
   private async safeText(res: FetchResponse): Promise<string> {
