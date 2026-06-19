@@ -1,0 +1,10 @@
+{
+  "type": "string",
+  "title": {
+    "en": "Sleep stage"
+  },
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "insights": false
+}

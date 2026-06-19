@@ -131,6 +131,62 @@ test('setSideLevel PUTs a clamped integer currentLevel', async () => {
   assert.deepStrictEqual(JSON.parse(captured.body), { currentLevel: 100 });
 });
 
+test('getSideMetrics parses biometrics and sleep scores from the latest trend day', async () => {
+  const trends = {
+    days: [
+      {
+        score: 82,
+        sleepDuration: 27000,
+        sleepQualityScore: { total: 90, hrv: { current: 55 }, respiratoryRate: { current: 14.2 } },
+        sleepRoutineScore: { total: 75 },
+        sessions: [
+          {
+            timeseries: {
+              heartRate: [['t1', 60], ['t2', 58]],
+              tempRoomC: [['t1', 20.5]],
+              tempBedC: [['t1', 30.1]],
+            },
+            stages: [{ stage: 'light' }, { stage: 'deep' }],
+          },
+        ],
+      },
+    ],
+  };
+  const { client } = makeClient((url) => {
+    if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
+    if (url.includes('/trends')) return Promise.resolve(okJson(trends));
+    return Promise.resolve(okJson({}));
+  });
+
+  const m = await client.getSideMetrics('u1', { tz: 'Europe/London', from: '2026-06-18', to: '2026-06-20' });
+  assert.strictEqual(m.heartRate, 58);
+  assert.strictEqual(m.hrv, 55);
+  assert.strictEqual(m.breathRate, 14.2);
+  assert.strictEqual(m.roomTemp, 20.5);
+  assert.strictEqual(m.bedTemp, 30.1);
+  assert.strictEqual(m.sleepStage, 'deep');
+  assert.strictEqual(m.sleepFitnessScore, 82);
+  assert.strictEqual(m.sleepQualityScore, 90);
+  assert.strictEqual(m.sleepRoutineScore, 75);
+  assert.strictEqual(m.timeSleptSeconds, 27000);
+  assert.strictEqual(m.bedPresence, true);
+});
+
+test('getSideMetrics returns all-null metrics when there is no trend data', async () => {
+  const { client } = makeClient((url) => {
+    if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
+    if (url.includes('/trends')) return Promise.resolve(okJson({ days: [] }));
+    return Promise.resolve(okJson({}));
+  });
+
+  const m = await client.getSideMetrics('u1', { tz: 'UTC', from: '2026-06-18', to: '2026-06-20' });
+  assert.strictEqual(m.heartRate, null);
+  assert.strictEqual(m.bedPresence, null);
+  assert.strictEqual(m.sleepStage, null);
+});
+
 test('setSidePower PUTs smart when on and off when off', async () => {
   const bodies = [];
   const { client } = makeClient((url, init) => {

@@ -16,7 +16,7 @@ import {
 } from './constants';
 import { RateLimiter } from './RateLimiter';
 import type {
-  BedSideRef, EightSleepConfig, FetchFn, FetchResponse, HttpMethod, Token,
+  BedSideRef, EightSleepConfig, FetchFn, FetchResponse, HttpMethod, SideMetrics, Token, TrendDay, TrendSession,
 } from './types';
 
 /** Error thrown for any non-recoverable API failure. */
@@ -34,6 +34,49 @@ export class EightSleepError extends Error {
 }
 
 const noop = (): void => undefined;
+
+/** Last numeric value of a [timestamp, value] timeseries, or null. */
+function lastSample(arr?: Array<[string, number]>): number | null {
+  if (!Array.isArray(arr) || arr.length === 0) return null;
+  const v = arr[arr.length - 1]?.[1];
+  return typeof v === 'number' && Number.isFinite(v) ? v : null;
+}
+
+/** Coerce an API value to a finite number, treating null/"None" as null. */
+function numOrNull(value: unknown): number | null {
+  if (value === null || value === undefined || value === 'None') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Pick the most relevant sleep stage from a session's stages list. */
+function latestStage(session?: TrendSession): string | null {
+  const stages = session?.stages;
+  if (!Array.isArray(stages) || stages.length === 0) return null;
+  return stages[stages.length - 1]?.stage ?? null;
+}
+
+function emptyMetrics(): SideMetrics {
+  return {
+    bedPresence: null,
+    heartRate: null,
+    hrv: null,
+    breathRate: null,
+    roomTemp: null,
+    bedTemp: null,
+    sleepStage: null,
+    sleepFitnessScore: null,
+    sleepQualityScore: null,
+    sleepRoutineScore: null,
+    timeSleptSeconds: null,
+  };
+}
+
+function buildQuery(params: Record<string, string>): string {
+  return Object.entries(params)
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .join('&');
+}
 
 /**
  * Talks to Eight Sleep's unofficial cloud API. Handles OAuth password-grant
@@ -270,6 +313,59 @@ export class EightSleepClient {
     await this.apiRequest('put', `${APP_API_URL}v1/users/${userId}/temperature`, {
       currentLevel: clamped,
     });
+  }
+
+  /**
+   * Fetch the user's sleep "trends" (V2 API) for a date range. Each entry is a
+   * day with sleep scores plus per-session timeseries (heart rate, temps, etc.).
+   */
+  async getTrends(userId: string, opts: { tz: string; from: string; to: string }): Promise<TrendDay[]> {
+    const query = buildQuery({
+      tz: opts.tz,
+      from: opts.from,
+      to: opts.to,
+      'include-main': 'false',
+      'include-all-sessions': 'true',
+      'model-version': 'v2',
+    });
+    const data = await this.apiRequest<{ days?: TrendDay[] }>(
+      'get',
+      `${CLIENT_API_URL}/users/${userId}/trends?${query}`,
+    );
+    return Array.isArray(data.days) ? data.days : [];
+  }
+
+  /**
+   * Derive normalised biometric + sleep metrics for a side from the latest
+   * trend day. Field paths mirror the Eight Sleep V2 trends payload. Values are
+   * null when no current/active session data is available.
+   */
+  async getSideMetrics(userId: string, opts: { tz: string; from: string; to: string }): Promise<SideMetrics> {
+    const days = await this.getTrends(userId, opts);
+    const day = days.length ? days[days.length - 1] : undefined;
+    if (!day) return emptyMetrics();
+
+    const sessions = Array.isArray(day.sessions) ? day.sessions : [];
+    const session = sessions.length ? sessions[sessions.length - 1] : undefined;
+    const ts = session?.timeseries ?? {};
+
+    const heartRate = lastSample(ts.heartRate);
+
+    return {
+      // Presence is inferred from a live heart-rate signal (the cloud API has
+      // no reliable explicit presence flag). Refined in a later sprint.
+      bedPresence: heartRate !== null ? true : null,
+      heartRate,
+      hrv: numOrNull(day.sleepQualityScore?.hrv?.current),
+      breathRate: numOrNull(day.sleepQualityScore?.respiratoryRate?.current),
+      roomTemp: lastSample(ts.tempRoomC),
+      bedTemp: lastSample(ts.tempBedC),
+      sleepStage: latestStage(session),
+      sleepFitnessScore: numOrNull(day.score),
+      sleepQualityScore: numOrNull(day.sleepQualityScore?.total),
+      sleepRoutineScore: numOrNull(day.sleepRoutineScore?.total),
+      timeSleptSeconds: numOrNull(day.sleepDuration),
+    };
   }
 
   private async safeText(res: FetchResponse): Promise<string> {

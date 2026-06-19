@@ -1,0 +1,14 @@
+{
+  "type": "number",
+  "title": {
+    "en": "Heart rate variability"
+  },
+  "units": {
+    "en": "ms"
+  },
+  "decimals": 0,
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "insights": true
+}

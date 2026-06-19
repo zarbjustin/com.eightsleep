@@ -36,7 +36,18 @@
       "class": "thermostat",
       "capabilities": [
         "onoff",
-        "target_temperature"
+        "target_temperature",
+        "measure_temperature",
+        "measure_temperature.room",
+        "alarm_presence",
+        "measure_heart_rate",
+        "measure_hrv",
+        "measure_breath_rate",
+        "sleep_stage",
+        "sleep_fitness_score",
+        "sleep_quality_score",
+        "sleep_routine_score",
+        "time_slept"
       ],
       "capabilitiesOptions": {
         "onoff": {
@@ -53,6 +64,16 @@
           "step": 0.5,
           "units": {
             "en": "°C"
+          }
+        },
+        "measure_temperature": {
+          "title": {
+            "en": "Bed temperature"
+          }
+        },
+        "measure_temperature.room": {
+          "title": {
+            "en": "Room temperature"
           }
         }
       },
@@ -128,5 +149,116 @@
       ],
       "id": "bed-side"
     }
-  ]
+  ],
+  "capabilities": {
+    "alarm_presence": {
+      "type": "boolean",
+      "title": {
+        "en": "Bed presence"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true
+    },
+    "measure_breath_rate": {
+      "type": "number",
+      "title": {
+        "en": "Breath rate"
+      },
+      "units": {
+        "en": "/min"
+      },
+      "decimals": 1,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true
+    },
+    "measure_heart_rate": {
+      "type": "number",
+      "title": {
+        "en": "Heart rate"
+      },
+      "units": {
+        "en": "bpm"
+      },
+      "decimals": 0,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true
+    },
+    "measure_hrv": {
+      "type": "number",
+      "title": {
+        "en": "Heart rate variability"
+      },
+      "units": {
+        "en": "ms"
+      },
+      "decimals": 0,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true
+    },
+    "sleep_fitness_score": {
+      "type": "number",
+      "title": {
+        "en": "Sleep fitness score"
+      },
+      "decimals": 0,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true
+    },
+    "sleep_quality_score": {
+      "type": "number",
+      "title": {
+        "en": "Sleep quality score"
+      },
+      "decimals": 0,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true
+    },
+    "sleep_routine_score": {
+      "type": "number",
+      "title": {
+        "en": "Sleep routine score"
+      },
+      "decimals": 0,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true
+    },
+    "sleep_stage": {
+      "type": "string",
+      "title": {
+        "en": "Sleep stage"
+      },
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": false
+    },
+    "time_slept": {
+      "type": "number",
+      "title": {
+        "en": "Time slept"
+      },
+      "units": {
+        "en": "h"
+      },
+      "decimals": 1,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true
+    }
+  }
 }

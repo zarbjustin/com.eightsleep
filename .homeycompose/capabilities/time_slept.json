@@ -1,0 +1,14 @@
+{
+  "type": "number",
+  "title": {
+    "en": "Time slept"
+  },
+  "units": {
+    "en": "h"
+  },
+  "decimals": 1,
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "insights": true
+}

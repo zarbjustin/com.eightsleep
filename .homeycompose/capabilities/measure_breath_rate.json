@@ -1,0 +1,14 @@
+{
+  "type": "number",
+  "title": {
+    "en": "Breath rate"
+  },
+  "units": {
+    "en": "/min"
+  },
+  "decimals": 1,
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "insights": true
+}

@@ -48,3 +48,50 @@ export interface BedSideRef {
   userId: string;
   side: 'left' | 'right' | 'solo';
 }
+
+/** A [timestamp, value] sample as returned in trend timeseries arrays. */
+export type TimeseriesSample = [string, number];
+
+export interface TrendTimeseries {
+  heartRate?: TimeseriesSample[];
+  tempRoomC?: TimeseriesSample[];
+  tempBedC?: TimeseriesSample[];
+  hrv?: TimeseriesSample[];
+  respiratoryRate?: TimeseriesSample[];
+}
+
+export interface TrendSession {
+  timeseries?: TrendTimeseries;
+  stages?: Array<{ stage?: string }>;
+}
+
+export interface TrendDay {
+  day?: string;
+  score?: number;
+  sleepDuration?: number;
+  presenceStart?: string;
+  presenceEnd?: string;
+  processing?: boolean;
+  sleepQualityScore?: {
+    total?: number;
+    hrv?: { current?: number };
+    respiratoryRate?: { current?: number };
+  };
+  sleepRoutineScore?: { total?: number };
+  sessions?: TrendSession[];
+}
+
+/** Normalised per-side biometric + sleep metrics derived from trend data. */
+export interface SideMetrics {
+  bedPresence: boolean | null;
+  heartRate: number | null;
+  hrv: number | null;
+  breathRate: number | null;
+  roomTemp: number | null;
+  bedTemp: number | null;
+  sleepStage: string | null;
+  sleepFitnessScore: number | null;
+  sleepQualityScore: number | null;
+  sleepRoutineScore: number | null;
+  timeSleptSeconds: number | null;
+}

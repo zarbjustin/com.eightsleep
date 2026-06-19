@@ -18,7 +18,14 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
   private pollTimer: NodeJS.Timeout | null = null;
 
+  private static readonly CAPABILITIES = [
+    'onoff', 'target_temperature', 'measure_temperature', 'measure_temperature.room',
+    'alarm_presence', 'measure_heart_rate', 'measure_hrv', 'measure_breath_rate',
+    'sleep_stage', 'sleep_fitness_score', 'sleep_quality_score', 'sleep_routine_score', 'time_slept',
+  ];
+
   async onInit(): Promise<void> {
+    await this.ensureCapabilities();
     this.client = this.buildClient();
 
     this.registerCapabilityListener('onoff', async (value: boolean) => {
@@ -32,6 +39,15 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
     await this.refresh();
     this.startPolling();
     this.log(`Eight Sleep bed side initialized (${this.getStoreValue('side')})`);
+  }
+
+  /** Add any capabilities introduced after a device was first paired. */
+  private async ensureCapabilities(): Promise<void> {
+    for (const cap of EightSleepBedSideDevice.CAPABILITIES) {
+      if (!this.hasCapability(cap)) {
+        await this.addCapability(cap).catch((err) => this.error(`addCapability ${cap}`, err));
+      }
+    }
   }
 
   private buildClient(): EightSleepClient {
@@ -48,15 +64,57 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
   }
 
   private async refresh(): Promise<void> {
+    let reachable = false;
     try {
       const state = await this.client.getSideState(this.userId());
       await this.setCapabilityValue('onoff', state.isOn);
       await this.setCapabilityValue('target_temperature', levelToCelsius(state.currentLevel));
-      if (!this.getAvailable()) await this.setAvailable();
+      reachable = true;
     } catch (err) {
       this.error('Failed to refresh Eight Sleep state', err);
+    }
+
+    try {
+      await this.refreshMetrics();
+      reachable = true;
+    } catch (err) {
+      this.error('Failed to refresh Eight Sleep metrics', err);
+    }
+
+    if (reachable) {
+      if (!this.getAvailable()) await this.setAvailable();
+    } else {
       await this.setUnavailable('Could not reach Eight Sleep.').catch(() => undefined);
     }
+  }
+
+  private async refreshMetrics(): Promise<void> {
+    const tz = this.homey.clock.getTimezone();
+    const day = 24 * 60 * 60 * 1000;
+    const fmt = (d: Date): string => d.toISOString().slice(0, 10);
+    const now = Date.now();
+
+    const m = await this.client.getSideMetrics(this.userId(), {
+      tz,
+      from: fmt(new Date(now - day)),
+      to: fmt(new Date(now + day)),
+    });
+
+    const set = async (cap: string, value: number | boolean | string | null): Promise<void> => {
+      await this.setCapabilityValue(cap, value).catch((err) => this.error(`setCapabilityValue ${cap}`, err));
+    };
+
+    await set('alarm_presence', m.bedPresence);
+    await set('measure_heart_rate', m.heartRate);
+    await set('measure_hrv', m.hrv);
+    await set('measure_breath_rate', m.breathRate);
+    await set('measure_temperature', m.bedTemp);
+    await set('measure_temperature.room', m.roomTemp);
+    await set('sleep_stage', m.sleepStage);
+    await set('sleep_fitness_score', m.sleepFitnessScore);
+    await set('sleep_quality_score', m.sleepQualityScore);
+    await set('sleep_routine_score', m.sleepRoutineScore);
+    await set('time_slept', m.timeSleptSeconds === null ? null : Math.round((m.timeSleptSeconds / 3600) * 10) / 10);
   }
 
   private startPolling(): void {
