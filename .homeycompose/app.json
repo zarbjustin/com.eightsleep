@@ -17,6 +17,18 @@
   "category": [
     "climate"
   ],
+  "tags": {
+    "en": [
+      "eight sleep",
+      "pod",
+      "mattress",
+      "sleep",
+      "bed",
+      "temperature",
+      "heart rate",
+      "presence"
+    ]
+  },
   "permissions": [],
   "images": {
     "small": "/assets/images/small.png",
