@@ -1,5 +1,8 @@
 {
   "1.0.0": {
     "en": "Initial release. Add each Eight Sleep bed side as its own device and sign in with your account. Per-side power and target temperature (13-44 °C); live bed presence, heart rate, HRV and breath rate; sleep stage and fitness/quality/routine scores plus time slept; bed and room temperature. Alarms with next-alarm display, snooze/stop and one-off alarms. Away mode, Pod priming and water-low alerts. Adjustable Base support (head/feet angle, snore mitigation, presets) when a Base is paired. A dashboard widget with quick temperature and power controls, plus rich Flow triggers, conditions and actions."
+  },
+  "1.0.1": {
+    "en": "Fix bed presence detection so the 'bed became empty' and 'someone got into bed' Flow triggers fire reliably - including when you get back into bed and when Eight Sleep returns a placeholder entry for the current day."
   }
 }
