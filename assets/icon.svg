@@ -1,14 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="960" height="960" viewBox="0 0 960 960" xmlns="http://www.w3.org/2000/svg">
-  <g fill="none" stroke="#E8EEF4" stroke-width="34" stroke-linecap="round" stroke-linejoin="round">
-    <!-- bed (top-down) -->
-    <rect x="250" y="165" width="460" height="500" rx="56"/>
-    <!-- pillow -->
-    <rect x="312" y="212" width="336" height="120" rx="28"/>
-    <!-- duvet fold -->
-    <path d="M250 410 H710"/>
-    <!-- climate waves (cool + warm) -->
-    <path d="M330 740 q40 -40 80 0 t80 0 t80 0 t80 0"/>
-    <path d="M330 820 q40 -40 80 0 t80 0 t80 0 t80 0"/>
-  </g>
+  <defs>
+    <mask id="eight">
+      <rect x="172" y="15" width="616" height="473" rx="176" fill="#ffffff"/>
+      <rect x="172" y="472" width="616" height="473" rx="176" fill="#ffffff"/>
+      <rect x="341" y="157" width="278" height="195" rx="64" fill="#000000"/>
+      <rect x="341" y="607" width="278" height="195" rx="64" fill="#000000"/>
+    </mask>
+  </defs>
+  <rect width="960" height="960" fill="#FFFFFF" mask="url(#eight)"/>
 </svg>
