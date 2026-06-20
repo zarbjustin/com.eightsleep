@@ -193,6 +193,52 @@ test('getSideMetrics reports bed empty (false) once presence has ended', async (
   assert.strictEqual(m.bedPresence, false);
 });
 
+test('getSideMetrics reports present again when presenceStart is newer than presenceEnd', async () => {
+  // The sleeper got out of bed (presenceEnd) and then got back in (a newer
+  // presenceStart) within the same trend-day record. Presence must read true.
+  const trends = {
+    days: [{
+      score: 80,
+      presenceEnd: '2026-06-20T06:30:00.000Z',
+      presenceStart: '2026-06-20T07:15:00.000Z',
+      sessions: [{ timeseries: { heartRate: [['t1', 55]] }, stages: [{ stage: 'light' }] }],
+    }],
+  };
+  const { client } = makeClient((url) => {
+    if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
+    if (url.includes('/trends')) return Promise.resolve(okJson(trends));
+    return Promise.resolve(okJson({}));
+  });
+  const m = await client.getSideMetrics('u1', { tz: 'UTC', from: '2026-06-18', to: '2026-06-20' });
+  assert.strictEqual(m.bedPresence, true);
+});
+
+test('getSideMetrics ignores a trailing empty trend day and reads the active one', async () => {
+  // The API can return an empty placeholder "tomorrow" day. Selecting it would
+  // wrongly report the bed as empty while the real night sits in the prior day.
+  const trends = {
+    days: [
+      {
+        score: 82,
+        presenceStart: '2026-06-19T23:00:00.000Z',
+        sessions: [{ timeseries: { heartRate: [['t1', 58]] }, stages: [{ stage: 'deep' }] }],
+      },
+      {},
+    ],
+  };
+  const { client } = makeClient((url) => {
+    if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
+    if (url.includes('/trends')) return Promise.resolve(okJson(trends));
+    return Promise.resolve(okJson({}));
+  });
+  const m = await client.getSideMetrics('u1', { tz: 'UTC', from: '2026-06-18', to: '2026-06-20' });
+  assert.strictEqual(m.bedPresence, true);
+  assert.strictEqual(m.heartRate, 58);
+  assert.strictEqual(m.sleepStage, 'deep');
+});
+
 test('getSideMetrics withholds scores while the night is still processing', async () => {
   const trends = {
     days: [{

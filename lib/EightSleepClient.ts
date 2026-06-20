@@ -51,17 +51,53 @@ function lastSampleTime(arr?: Array<[string, number]>): number | null {
 }
 
 /**
+ * How recent a live heart-rate sample must be to imply presence when no
+ * explicit presenceStart/presenceEnd markers are available yet.
+ */
+const PRESENCE_HR_FALLBACK_MS = 15 * 60 * 1000;
+
+/**
  * Determine whether someone is currently in bed. Prefers the explicit
  * presenceStart/presenceEnd markers from the trend day; falls back to a recent
- * (<15 min) live heart-rate sample. Returns false (not null) when there is no
- * evidence of presence so the "bed empty" trigger can fire.
+ * live heart-rate sample. Returns false (not null) when there is no evidence of
+ * presence so the "bed empty" trigger can fire.
+ *
+ * When both markers are present the most recent one wins: a presenceStart that
+ * is newer than (or equal to) presenceEnd means the sleeper got back into bed
+ * after an earlier exit, so presence is still true.
  */
 function computePresence(day: TrendDay, ts: { heartRate?: Array<[string, number]> }, now: number): boolean {
-  if (day.presenceEnd) return false;
-  if (day.presenceStart) return true;
+  const start = day.presenceStart ? Date.parse(day.presenceStart) : NaN;
+  const end = day.presenceEnd ? Date.parse(day.presenceEnd) : NaN;
+  const hasStart = Number.isFinite(start);
+  const hasEnd = Number.isFinite(end);
+
+  if (hasStart && hasEnd) return start >= end;
+  if (hasEnd) return false;
+  if (hasStart) return true;
+
   const hrTime = lastSampleTime(ts.heartRate);
-  if (hrTime !== null) return now - hrTime <= 15 * 60 * 1000;
+  if (hrTime !== null) return now - hrTime <= PRESENCE_HR_FALLBACK_MS;
   return false;
+}
+
+/**
+ * Pick the most recent trend day that actually carries data. The trends query
+ * spans yesterday→tomorrow, and the API can return empty placeholder days for
+ * parts of the range (e.g. a not-yet-started "tomorrow"). Selecting the last
+ * raw element would then read an empty day and wrongly report the bed as empty
+ * while the sleeper's real data sits in the previous day record.
+ */
+function pickActiveDay(days: TrendDay[]): TrendDay | undefined {
+  for (let i = days.length - 1; i >= 0; i -= 1) {
+    const d = days[i];
+    const hasData = !!d.presenceStart
+      || !!d.presenceEnd
+      || d.processing === true
+      || (Array.isArray(d.sessions) && d.sessions.length > 0);
+    if (hasData) return d;
+  }
+  return days.length ? days[days.length - 1] : undefined;
 }
 
 /** Coerce an API value to a finite number, treating null/"None" as null. */
@@ -382,7 +418,7 @@ export class EightSleepClient {
    */
   async getSideMetrics(userId: string, opts: { tz: string; from: string; to: string }): Promise<SideMetrics> {
     const days = await this.getTrends(userId, opts);
-    const day = days.length ? days[days.length - 1] : undefined;
+    const day = pickActiveDay(days);
     if (!day) return emptyMetrics();
 
     const sessions = Array.isArray(day.sessions) ? day.sessions : [];
