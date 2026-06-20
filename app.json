@@ -13,16 +13,13 @@
     "en": "Eight Sleep"
   },
   "description": {
-    "en": "Monitor and control your Eight Sleep Pod from Homey — temperature, presence, sleep metrics and alarms, per bed side.",
-    "nl": "Bekijk en bedien je Eight Sleep Pod vanuit Homey — temperatuur, aanwezigheid, slaapstatistieken en wekkers, per bedzijde.",
-    "de": "Überwache und steuere deinen Eight Sleep Pod von Homey aus — Temperatur, Anwesenheit, Schlafdaten und Wecker, pro Bettseite."
+    "en": "Dial in the perfect temperature for every night's sleep."
   },
   "category": [
     "climate"
   ],
   "tags": {
     "en": [
-      "eight sleep",
       "pod",
       "mattress",
       "sleep",
@@ -190,6 +187,9 @@
         "title": {
           "en": "Sleep stage changed"
         },
+        "hint": {
+          "en": "Fires when the detected sleep stage changes (e.g. light, deep, rem)."
+        },
         "tokens": [
           {
             "name": "stage",
@@ -333,7 +333,10 @@
       {
         "id": "weekly_summary",
         "title": {
-          "en": "Daily sleep summary (7-day averages)"
+          "en": "Daily sleep summary is ready"
+        },
+        "hint": {
+          "en": "Fires once per day with 7-day rolling averages of your sleep scores."
         },
         "tokens": [
           {
@@ -619,7 +622,10 @@
       {
         "id": "set_temperature_f",
         "title": {
-          "en": "Set target temperature (°F)"
+          "en": "Set target temperature in Fahrenheit"
+        },
+        "hint": {
+          "en": "Sets the side's target temperature using a Fahrenheit value."
         },
         "titleFormatted": {
           "en": "Set target temperature to [[fahrenheit]] °F"
@@ -646,6 +652,9 @@
         "id": "set_temperature_in",
         "title": {
           "en": "Set target temperature after a delay"
+        },
+        "hint": {
+          "en": "Waits the given number of minutes, then sets the target temperature."
         },
         "titleFormatted": {
           "en": "Set target temperature to [[temperature]] °C in [[minutes]] minutes"
@@ -682,6 +691,9 @@
         "id": "set_one_off_alarm",
         "title": {
           "en": "Set a one-off alarm"
+        },
+        "hint": {
+          "en": "Creates a single non-repeating alarm for this side at the given time."
         },
         "titleFormatted": {
           "en": "Set a one-off alarm at [[time]]"

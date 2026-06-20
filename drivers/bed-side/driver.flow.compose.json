@@ -33,6 +33,9 @@
       "title": {
         "en": "Sleep stage changed"
       },
+      "hint": {
+        "en": "Fires when the detected sleep stage changes (e.g. light, deep, rem)."
+      },
       "tokens": [
         {
           "name": "stage",
@@ -106,7 +109,10 @@
     {
       "id": "weekly_summary",
       "title": {
-        "en": "Daily sleep summary (7-day averages)"
+        "en": "Daily sleep summary is ready"
+      },
+      "hint": {
+        "en": "Fires once per day with 7-day rolling averages of your sleep scores."
       },
       "tokens": [
         { "name": "avg_fitness", "type": "number", "title": { "en": "Avg fitness score" }, "example": 80 },
@@ -270,7 +276,10 @@
     {
       "id": "set_temperature_f",
       "title": {
-        "en": "Set target temperature (°F)"
+        "en": "Set target temperature in Fahrenheit"
+      },
+      "hint": {
+        "en": "Sets the side's target temperature using a Fahrenheit value."
       },
       "titleFormatted": {
         "en": "Set target temperature to [[fahrenheit]] °F"
@@ -284,6 +293,9 @@
       "title": {
         "en": "Set target temperature after a delay"
       },
+      "hint": {
+        "en": "Waits the given number of minutes, then sets the target temperature."
+      },
       "titleFormatted": {
         "en": "Set target temperature to [[temperature]] °C in [[minutes]] minutes"
       },
@@ -296,6 +308,9 @@
       "id": "set_one_off_alarm",
       "title": {
         "en": "Set a one-off alarm"
+      },
+      "hint": {
+        "en": "Creates a single non-repeating alarm for this side at the given time."
       },
       "titleFormatted": {
         "en": "Set a one-off alarm at [[time]]"
