@@ -173,7 +173,7 @@ export class EightSleepClient {
     this.fetchImpl = config.fetchImpl ?? ((url, init) => (fetch as unknown as FetchFn)(url, init));
     this.now = config.now ?? Date.now;
     this.sleep = config.sleep ?? ((ms) => new Promise((r) => {
-      setTimeout(r, ms);
+      global.setTimeout(r, ms);
     }));
     this.log = config.log ?? noop;
     this.limiter = new RateLimiter(MIN_REQUEST_GAP_MS, this.now, this.sleep);
@@ -311,12 +311,12 @@ export class EightSleepClient {
 
   /** Perform a fetch that rejects if it does not settle within the timeout. */
   private timedFetch(url: string, init?: Parameters<FetchFn>[1]): Promise<FetchResponse> {
-    let timer: NodeJS.Timeout | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const timeout = new Promise<never>((_resolve, reject) => {
-      timer = setTimeout(() => reject(new EightSleepError('Eight Sleep request timed out.')), DEFAULT_TIMEOUT_MS);
+      timer = global.setTimeout(() => reject(new EightSleepError('Eight Sleep request timed out.')), DEFAULT_TIMEOUT_MS);
     });
     return Promise.race([this.fetchImpl(url, init), timeout]).finally(() => {
-      if (timer) clearTimeout(timer);
+      if (timer) global.clearTimeout(timer);
     }) as Promise<FetchResponse>;
   }
 

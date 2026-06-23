@@ -4,7 +4,7 @@ export type NowFn = () => number;
 export type SleepFn = (ms: number) => Promise<void>;
 
 const defaultSleep: SleepFn = (ms) => new Promise((resolve) => {
-  setTimeout(resolve, ms);
+  global.setTimeout(resolve, ms);
 });
 
 /**
