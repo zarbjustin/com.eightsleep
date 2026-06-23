@@ -1,16 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="960" height="960" viewBox="0 0 960 960" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bed icon">
-  <rect width="960" height="960" fill="#FFFFFF"/>
-  <!-- simple bed silhouette centered -->
-  <g transform="translate(120,300)">
-    <!-- mattress -->
-    <rect x="0" y="60" width="720" height="180" rx="24" fill="#222222"/>
-    <!-- headboard -->
-    <rect x="0" y="-40" width="160" height="140" rx="20" fill="#222222"/>
-    <!-- pillow -->
-    <rect x="540" y="70" width="120" height="80" rx="14" fill="#3a3a3a"/>
-    <!-- legs -->
-    <rect x="40" y="240" width="40" height="80" rx="8" fill="#222222"/>
-    <rect x="640" y="240" width="40" height="80" rx="8" fill="#222222"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="48" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M168 552V360c0-66 54-120 120-120h384c66 0 120 54 120 120v192"/>
+    <path d="M192 552h576c66 0 120 54 120 120v96"/>
+    <path d="M72 768V408"/>
+    <path d="M72 624h816"/>
+    <path d="M216 624v-72c0-53 43-96 96-96h96c53 0 96 43 96 96v72"/>
+    <path d="M504 624v-72c0-53 43-96 96-96h48c53 0 96 43 96 96v72"/>
+    <path d="M168 768v96"/>
+    <path d="M792 768v96"/>
   </g>
 </svg>

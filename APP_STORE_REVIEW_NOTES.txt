@@ -1,0 +1,5 @@
+Suggested App Store submission note
+
+This is an independent community app for Eight Sleep. It is not affiliated with, authorized by or endorsed by Eight Sleep, and no source code was copied from other integrations. The Eight Sleep cloud API behavior was informed by public community documentation, with credit given in the source README.
+
+We are aware of an early Homey community/forum test app for Eight Sleep Pod control. This submission is a separate maintained implementation that adds a broader Homey integration surface: per-side devices, temperature and power control, presence, sleep metrics, alarms, away/maintenance states, adjustable base actions, dashboard widget support, automated tests and publish-level validation.

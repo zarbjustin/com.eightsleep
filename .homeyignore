@@ -1,4 +1,5 @@
 # Developer-only files, excluded from the published Homey app bundle.
 /STATUS.md
 /README.md
+/APP_STORE_REVIEW_NOTES.txt
 /.github/
