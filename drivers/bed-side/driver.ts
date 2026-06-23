@@ -36,6 +36,10 @@ function sideLabel(side: BedSideRef['side']): string {
   return 'Bed';
 }
 
+function credKey(dataId: string): string {
+  return `creds:${dataId}`;
+}
+
 module.exports = class EightSleepBedSideDriver extends Homey.Driver {
 
   async onInit(): Promise<void> {
@@ -145,20 +149,23 @@ module.exports = class EightSleepBedSideDriver extends Homey.Driver {
       const sides = await client.discoverBedSides();
       const deviceIds = [...new Set(sides.map((s) => s.deviceId))];
 
-      return sides.map((s) => {
+      return Promise.all(sides.map(async (s) => {
+        const dataId = `${s.deviceId}:${s.side}`;
+        await this.homey.settings.set(credKey(dataId), {
+          email: creds.email,
+          password: creds.password,
+        });
         const podSuffix = deviceIds.length > 1 ? ` (Pod ${deviceIds.indexOf(s.deviceId) + 1})` : '';
         return {
           name: `Eight Sleep ${sideLabel(s.side)}${podSuffix}`,
-          data: { id: `${s.deviceId}:${s.side}` },
+          data: { id: dataId },
           store: {
             deviceId: s.deviceId,
             userId: s.userId,
             side: s.side,
-            email: creds.email,
-            password: creds.password,
           },
         };
-      });
+      }));
     });
   }
 

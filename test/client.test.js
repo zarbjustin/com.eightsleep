@@ -336,17 +336,20 @@ test('concurrent requests trigger only one authentication', async () => {
   assert.strictEqual(auths, 1);
 });
 
-test('a non-recoverable API error throws EightSleepError carrying the status', async () => {
+test('a non-recoverable API error throws a sanitized EightSleepError carrying the status', async () => {
   const { client } = makeClient((url) => {
     if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
     if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
-    if (url.includes('/devices/')) return Promise.resolve(errStatus(500, 'boom'));
+    if (url.includes('/devices/')) return Promise.resolve(errStatus(500, 'secret response body'));
     return Promise.resolve(okJson({}));
   });
 
   await assert.rejects(client.getDevice('d1'), (e) => {
     assert.ok(e instanceof EightSleepError);
     assert.strictEqual(e.status, 500);
+    assert.ok(!e.message.includes('d1'));
+    assert.ok(!e.message.includes('secret response body'));
+    assert.strictEqual(e.body, undefined);
     return true;
   });
 });

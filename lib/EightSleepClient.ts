@@ -24,13 +24,10 @@ import type {
 export class EightSleepError extends Error {
   readonly status?: number;
 
-  readonly body?: string;
-
-  constructor(message: string, status?: number, body?: string) {
+  constructor(message: string, status?: number) {
     super(message);
     this.name = 'EightSleepError';
     this.status = status;
-    this.body = body;
   }
 }
 
@@ -218,13 +215,11 @@ export class EightSleepClient {
     }));
 
     if (!res.ok) {
-      const body = await this.safeText(res);
       throw new EightSleepError(
         res.status === 401 || res.status === 400
           ? 'Eight Sleep login failed — check your email and password.'
           : `Eight Sleep authentication failed (HTTP ${res.status}).`,
         res.status,
-        body,
       );
     }
 
@@ -247,8 +242,7 @@ export class EightSleepClient {
       headers: { ...API_HEADERS, authorization: `Bearer ${accessToken}` },
     }));
     if (!res.ok) {
-      const body = await this.safeText(res);
-      throw new EightSleepError(`Failed to load Eight Sleep profile (HTTP ${res.status}).`, res.status, body);
+      throw new EightSleepError(`Failed to load Eight Sleep profile (HTTP ${res.status}).`, res.status);
     }
     const data = (await res.json()) as { user?: { userId?: string; currentDevice?: { id?: string } } };
     const userId = data.user?.userId;
@@ -292,10 +286,8 @@ export class EightSleepClient {
       await this.sleep(delay);
       return this.requestWithRetry<T>(method, url, body, attempt + 1, didReauth);
     }
-
     if (!res.ok) {
-      const text = await this.safeText(res);
-      throw new EightSleepError(`Eight Sleep API error (HTTP ${res.status}) for ${method.toUpperCase()} ${url}.`, res.status, text);
+      throw new EightSleepError(`Eight Sleep API error (HTTP ${res.status}) during ${method.toUpperCase()} request.`, res.status);
     }
 
     return (await this.safeJson(res)) as T;
@@ -625,13 +617,6 @@ export class EightSleepClient {
     };
   }
 
-  private async safeText(res: FetchResponse): Promise<string> {
-    try {
-      return await res.text();
-    } catch {
-      return '';
-    }
-  }
 }
 
 /** Factory mirroring the createClient pattern used across the app. */

@@ -3,11 +3,11 @@
 /**
  * Endpoints and constants for Eight Sleep's (unofficial) cloud API.
  *
- * Eight Sleep does not publish a public API. The base URLs, the OAuth grant
- * shape and the baked-in client credentials below are the same public values
- * used by the official mobile apps and by existing open-source integrations.
- * They are NOT user secrets — the user's own email/password are supplied at
- * pairing time and are never stored in source.
+ * Eight Sleep does not publish a public API. The base URLs, OAuth grant shape
+ * and public mobile OAuth client values below are used by existing open-source
+ * integrations, but remain unofficial and may stop working if Eight Sleep
+ * changes its cloud service. They are NOT user secrets; user credentials are
+ * supplied at pairing time and are never stored in source.
  */
 
 export const AUTH_URL = 'https://auth-api.8slp.net/v1/tokens';
