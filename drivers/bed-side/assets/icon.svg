@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg width="960" height="960" viewBox="0 0 960 960" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <mask id="eight">
-      <rect x="172" y="15" width="616" height="473" rx="176" fill="#ffffff"/>
-      <rect x="172" y="472" width="616" height="473" rx="176" fill="#ffffff"/>
-      <rect x="341" y="157" width="278" height="195" rx="64" fill="#000000"/>
-      <rect x="341" y="607" width="278" height="195" rx="64" fill="#000000"/>
-    </mask>
-  </defs>
-  <rect width="960" height="960" fill="#FFFFFF" mask="url(#eight)"/>
+<svg width="960" height="960" viewBox="0 0 960 960" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bed icon">
+  <rect width="960" height="960" fill="#FFFFFF"/>
+  <!-- simple bed silhouette centered -->
+  <g transform="translate(120,300)">
+    <!-- mattress -->
+    <rect x="0" y="60" width="720" height="180" rx="24" fill="#222222"/>
+    <!-- headboard -->
+    <rect x="0" y="-40" width="160" height="140" rx="20" fill="#222222"/>
+    <!-- pillow -->
+    <rect x="540" y="70" width="120" height="80" rx="14" fill="#3a3a3a"/>
+    <!-- legs -->
+    <rect x="40" y="240" width="40" height="80" rx="8" fill="#222222"/>
+    <rect x="640" y="240" width="40" height="80" rx="8" fill="#222222"/>
+  </g>
 </svg>
