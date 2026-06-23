@@ -4,5 +4,8 @@
   },
   "1.0.1": {
     "en": "Fix bed presence detection so the 'bed became empty' and 'someone got into bed' Flow triggers fire reliably - including when you get back into bed and when Eight Sleep returns a placeholder entry for the current day."
+  },
+  "1.0.2": {
+    "en": "Homey App Store review polish: updated store copy and Flow wording, refreshed the driver icon, resized driver imagery, and added reviewer notes for the certification update."
   }
 }
