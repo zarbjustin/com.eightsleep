@@ -7,5 +7,8 @@
   },
   "1.0.2": {
     "en": "Homey App Store review polish: updated store copy and Flow wording, refreshed the driver icon, resized driver imagery, and added reviewer notes for the certification update."
+  },
+  "1.0.3": {
+    "en": "Public release hardening: migrate legacy device-store credentials into app settings, remove duplicated credential storage, sanitize API error logging, and keep internal project handoff notes out of the public app repo."
   }
 }
