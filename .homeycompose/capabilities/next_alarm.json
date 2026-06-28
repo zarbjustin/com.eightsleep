@@ -3,6 +3,7 @@
   "title": {
     "en": "Next alarm"
   },
+  "icon": "/assets/capabilities/next-alarm.svg",
   "getable": true,
   "setable": false,
   "uiComponent": "sensor",

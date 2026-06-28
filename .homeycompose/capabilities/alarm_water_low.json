@@ -3,6 +3,7 @@
   "title": {
     "en": "Water low"
   },
+  "icon": "/assets/capabilities/water-low.svg",
   "getable": true,
   "setable": false,
   "uiComponent": "sensor",

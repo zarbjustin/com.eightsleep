@@ -3,6 +3,7 @@
   "title": {
     "en": "Sleep fitness (7-day avg)"
   },
+  "icon": "/assets/capabilities/weekly-score.svg",
   "decimals": 1,
   "getable": true,
   "setable": false,

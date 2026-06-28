@@ -17,7 +17,7 @@ import {
 } from './constants';
 import { RateLimiter } from './RateLimiter';
 import type {
-  BaseSideData, BaseSummary, BedSideRef, EightSleepAlarm, EightSleepConfig, FetchFn, FetchResponse, HttpMethod, OneOffAlarmOptions, SideMetrics, Token, TrendDay, TrendSession,
+  BaseSideData, BaseSummary, BedSideRef, EightSleepAlarm, EightSleepConfig, FetchFn, FetchResponse, HttpMethod, OneOffAlarmOptions, SideMetrics, SideMetricsOptions, Token, TrendDay, TrendSession,
 } from './types';
 
 /** Error thrown for any non-recoverable API failure. */
@@ -53,7 +53,9 @@ function lastSampleTime(arr?: Array<[string, number]>): number | null {
  * so this is the primary real-time presence signal. Once samples stop arriving
  * (the sleeper left), presence drops after this window elapses.
  */
-const PRESENCE_HR_FALLBACK_MS = 15 * 60 * 1000;
+const PRESENCE_HR_FRESH_MS = 10 * 60 * 1000;
+
+const PRESENCE_HR_STALE_FALLBACK_MS = 30 * 60 * 1000;
 
 /**
  * Determine whether someone is currently in bed.
@@ -73,9 +75,18 @@ const PRESENCE_HR_FALLBACK_MS = 15 * 60 * 1000;
  * Returns false (not null) when there is no evidence of presence so the
  * "bed empty" trigger can fire.
  */
-function computePresence(day: TrendDay, ts: { heartRate?: Array<[string, number]> }, now: number): boolean {
+function computePresence(
+  day: TrendDay,
+  ts: { heartRate?: Array<[string, number]> },
+  now: number,
+  stateType?: string,
+): boolean {
   const hrTime = lastSampleTime(ts.heartRate);
-  if (hrTime !== null && now - hrTime <= PRESENCE_HR_FALLBACK_MS) return true;
+  if (hrTime !== null) {
+    const age = now - hrTime;
+    if (age <= PRESENCE_HR_FRESH_MS) return true;
+    if (age <= PRESENCE_HR_STALE_FALLBACK_MS && stateType?.startsWith('smart:')) return true;
+  }
 
   const start = day.presenceStart ? Date.parse(day.presenceStart) : NaN;
   const end = day.presenceEnd ? Date.parse(day.presenceEnd) : NaN;
@@ -135,6 +146,11 @@ function emptyMetrics(): SideMetrics {
     sleepRoutineScore: null,
     timeSleptSeconds: null,
   };
+}
+
+function isRecentSample(arr: Array<[string, number]> | undefined, now: number): boolean {
+  const sampleTime = lastSampleTime(arr);
+  return sampleTime !== null && now - sampleTime <= PRESENCE_HR_STALE_FALLBACK_MS;
 }
 
 function buildQuery(params: Record<string, string>): string {
@@ -418,7 +434,7 @@ export class EightSleepClient {
    * trend day. Field paths mirror the Eight Sleep V2 trends payload. Values are
    * null when no current/active session data is available.
    */
-  async getSideMetrics(userId: string, opts: { tz: string; from: string; to: string }): Promise<SideMetrics> {
+  async getSideMetrics(userId: string, opts: SideMetricsOptions): Promise<SideMetrics> {
     const days = await this.getTrends(userId, opts);
     const day = pickActiveDay(days);
     if (!day) return emptyMetrics();
@@ -429,6 +445,7 @@ export class EightSleepClient {
     const now = this.now();
 
     const heartRate = lastSample(ts.heartRate);
+    const hasRecentLiveData = isRecentSample(ts.heartRate, now);
 
     // While Eight Sleep is still processing the night, scores can be partial or
     // zero — withhold them (return null) rather than logging garbage.
@@ -436,13 +453,13 @@ export class EightSleepClient {
     const score = (value: unknown): number | null => (processing ? null : numOrNull(value));
 
     return {
-      bedPresence: computePresence(day, ts, now),
-      heartRate,
+      bedPresence: computePresence(day, ts, now, opts.stateType),
+      heartRate: hasRecentLiveData ? heartRate : null,
       hrv: numOrNull(day.sleepQualityScore?.hrv?.current),
       breathRate: numOrNull(day.sleepQualityScore?.respiratoryRate?.current),
       roomTemp: lastSample(ts.tempRoomC),
       bedTemp: lastSample(ts.tempBedC),
-      sleepStage: latestStage(session),
+      sleepStage: hasRecentLiveData ? latestStage(session) : null,
       sleepFitnessScore: score(day.score),
       sleepQualityScore: score(day.sleepQualityScore?.total),
       sleepRoutineScore: score(day.sleepRoutineScore?.total),
@@ -525,6 +542,15 @@ export class EightSleepClient {
     });
   }
 
+  /** Read the side's current away-mode status. */
+  async getAwayMode(userId: string): Promise<boolean | null> {
+    const data = await this.apiRequest<{ isAway?: boolean }>(
+      'get',
+      `${APP_API_URL}v1/users/${userId}/away-mode`,
+    );
+    return typeof data?.isAway === 'boolean' ? data.isAway : null;
+  }
+
   /** Trigger a re-prime of the Pod. */
   async primePod(deviceId: string, userId: string): Promise<void> {
     await this.apiRequest('post', `${APP_API_URL}v1/devices/${deviceId}/priming/tasks`, {
@@ -545,14 +571,12 @@ export class EightSleepClient {
     hasWater: boolean | null;
     isPriming: boolean | null;
     needsPriming: boolean | null;
-    awayUserIds: string[];
   }> {
     const data = await this.apiRequest<{
       result?: {
         hasWater?: boolean;
         priming?: boolean;
         needsPriming?: boolean;
-        awaySides?: Record<string, string>;
       };
     }>('get', `${CLIENT_API_URL}/devices/${deviceId}`);
     const r = data?.result ?? {};
@@ -560,7 +584,6 @@ export class EightSleepClient {
       hasWater: typeof r.hasWater === 'boolean' ? r.hasWater : null,
       isPriming: typeof r.priming === 'boolean' ? r.priming : null,
       needsPriming: typeof r.needsPriming === 'boolean' ? r.needsPriming : null,
-      awayUserIds: r.awaySides ? Object.values(r.awaySides) : [],
     };
   }
 

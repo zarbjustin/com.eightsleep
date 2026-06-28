@@ -3,6 +3,7 @@
   "title": {
     "en": "Head angle"
   },
+  "icon": "/assets/capabilities/base-angle.svg",
   "units": {
     "en": "°"
   },

@@ -3,6 +3,7 @@
   "title": {
     "en": "Priming"
   },
+  "icon": "/assets/capabilities/priming.svg",
   "getable": true,
   "setable": false,
   "uiComponent": "sensor",

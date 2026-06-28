@@ -3,6 +3,7 @@
   "title": {
     "en": "Feet angle"
   },
+  "icon": "/assets/capabilities/base-angle.svg",
   "units": {
     "en": "°"
   },

@@ -96,6 +96,13 @@ export interface SideMetrics {
   timeSleptSeconds: number | null;
 }
 
+export interface SideMetricsOptions {
+  tz: string;
+  from: string;
+  to: string;
+  stateType?: string;
+}
+
 /** A single alarm as returned by the v2 alarms endpoint. */
 export interface EightSleepAlarm {
   id: string;

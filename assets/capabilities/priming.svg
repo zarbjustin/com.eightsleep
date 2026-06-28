@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Priming">
+  <g fill="none" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M32 9s12 14 12 23c0 7-5 12-12 12s-12-5-12-12c0-9 12-23 12-23Z"/>
+    <path d="M18 48a22 22 0 0 0 29-2"/>
+    <path d="M47 46h-9"/>
+    <path d="M47 46v9"/>
+    <path d="M46 16a22 22 0 0 0-29 2"/>
+    <path d="M17 18h9"/>
+    <path d="M17 18V9"/>
+  </g>
+</svg>

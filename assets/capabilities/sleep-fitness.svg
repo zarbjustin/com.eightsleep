@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sleep fitness score">
+  <g fill="none" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 47h36"/>
+    <path d="M18 47V30"/>
+    <path d="M32 47V18"/>
+    <path d="M46 47V25"/>
+    <path d="M13 24c5 0 5-8 10-8s5 8 10 8 5-8 10-8 5 8 10 8"/>
+  </g>
+</svg>

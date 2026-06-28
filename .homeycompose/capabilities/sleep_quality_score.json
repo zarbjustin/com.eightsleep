@@ -3,6 +3,7 @@
   "title": {
     "en": "Sleep quality score"
   },
+  "icon": "/assets/capabilities/sleep-quality.svg",
   "decimals": 0,
   "getable": true,
   "setable": false,

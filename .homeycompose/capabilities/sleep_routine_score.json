@@ -3,6 +3,7 @@
   "title": {
     "en": "Sleep routine score"
   },
+  "icon": "/assets/capabilities/sleep-routine.svg",
   "decimals": 0,
   "getable": true,
   "setable": false,

@@ -3,6 +3,7 @@
   "title": {
     "en": "Heart rate"
   },
+  "icon": "/assets/capabilities/heart-rate.svg",
   "units": {
     "en": "bpm"
   },

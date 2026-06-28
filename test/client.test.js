@@ -132,20 +132,25 @@ test('setSideLevel PUTs a clamped integer currentLevel', async () => {
 });
 
 test('getSideMetrics parses biometrics and sleep scores from the latest trend day', async () => {
+  const now = Date.parse('2026-06-20T07:00:00.000Z');
   const trends = {
     days: [
       {
         score: 82,
         sleepDuration: 27000,
         presenceStart: '2026-06-19T23:00:00.000Z',
-        sleepQualityScore: { total: 90, hrv: { current: 55 }, respiratoryRate: { current: 14.2 } },
+        sleepQualityScore: {
+          total: 90,
+          hrv: { current: 55 },
+          respiratoryRate: { current: 14.2 },
+        },
         sleepRoutineScore: { total: 75 },
         sessions: [
           {
             timeseries: {
-              heartRate: [['t1', 60], ['t2', 58]],
-              tempRoomC: [['t1', 20.5]],
-              tempBedC: [['t1', 30.1]],
+              heartRate: [['2026-06-20T06:56:00.000Z', 60], ['2026-06-20T06:58:00.000Z', 58]],
+              tempRoomC: [['2026-06-20T06:58:00.000Z', 20.5]],
+              tempBedC: [['2026-06-20T06:58:00.000Z', 30.1]],
             },
             stages: [{ stage: 'light' }, { stage: 'deep' }],
           },
@@ -158,7 +163,7 @@ test('getSideMetrics parses biometrics and sleep scores from the latest trend da
     if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
     if (url.includes('/trends')) return Promise.resolve(okJson(trends));
     return Promise.resolve(okJson({}));
-  });
+  }, { now: () => now });
 
   const m = await client.getSideMetrics('u1', { tz: 'Europe/London', from: '2026-06-18', to: '2026-06-20' });
   assert.strictEqual(m.heartRate, 58);
@@ -258,6 +263,64 @@ test('getSideMetrics reports bed empty when the last heart-rate sample is stale'
   assert.strictEqual(m.bedPresence, false);
 });
 
+test('getSideMetrics clears stale live biometrics but keeps temperature samples', async () => {
+  const now = Date.parse('2026-06-20T07:00:00.000Z');
+  const trends = {
+    days: [{
+      score: 80,
+      presenceStart: '2026-06-19T23:00:00.000Z',
+      presenceEnd: '2026-06-20T06:30:00.000Z',
+      sleepQualityScore: {
+        hrv: { current: 55 },
+        respiratoryRate: { current: 14.2 },
+      },
+      sessions: [{
+        timeseries: {
+          heartRate: [['2026-06-20T06:00:00.000Z', 55]],
+          tempRoomC: [['2026-06-20T06:00:00.000Z', 20.5]],
+          tempBedC: [['2026-06-20T06:00:00.000Z', 30.1]],
+        },
+        stages: [{ stage: 'awake' }],
+      }],
+    }],
+  };
+  const { client } = makeClient((url) => {
+    if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
+    if (url.includes('/trends')) return Promise.resolve(okJson(trends));
+    return Promise.resolve(okJson({}));
+  }, { now: () => now });
+  const m = await client.getSideMetrics('u1', { tz: 'UTC', from: '2026-06-18', to: '2026-06-20' });
+  assert.strictEqual(m.heartRate, null);
+  assert.strictEqual(m.hrv, 55);
+  assert.strictEqual(m.breathRate, 14.2);
+  assert.strictEqual(m.roomTemp, 20.5);
+  assert.strictEqual(m.bedTemp, 30.1);
+  assert.strictEqual(m.sleepStage, null);
+});
+
+test('getSideMetrics keeps presence during a short trend lag while smart bedtime is active', async () => {
+  const now = Date.parse('2026-06-20T07:00:00.000Z');
+  const trends = {
+    days: [{
+      score: 80,
+      presenceStart: '2026-06-19T23:00:00.000Z',
+      presenceEnd: '2026-06-20T06:30:00.000Z',
+      sessions: [{ timeseries: { heartRate: [['2026-06-20T06:42:00.000Z', 55]] }, stages: [{ stage: 'awake' }] }],
+    }],
+  };
+  const { client } = makeClient((url) => {
+    if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
+    if (url.includes('/trends')) return Promise.resolve(okJson(trends));
+    return Promise.resolve(okJson({}));
+  }, { now: () => now });
+  const m = await client.getSideMetrics('u1', {
+    tz: 'UTC', from: '2026-06-18', to: '2026-06-20', stateType: 'smart:bedtime',
+  });
+  assert.strictEqual(m.bedPresence, true);
+});
+
 test('getSideMetrics ignores a trailing empty trend day and reads the active one', async () => {
   // The API can return an empty placeholder "tomorrow" day. Selecting it would
   // wrongly report the bed as empty while the real night sits in the prior day.
@@ -266,7 +329,7 @@ test('getSideMetrics ignores a trailing empty trend day and reads the active one
       {
         score: 82,
         presenceStart: '2026-06-19T23:00:00.000Z',
-        sessions: [{ timeseries: { heartRate: [['t1', 58]] }, stages: [{ stage: 'deep' }] }],
+        sessions: [{ timeseries: { heartRate: [['2026-06-20T06:58:00.000Z', 58]] }, stages: [{ stage: 'deep' }] }],
       },
       {},
     ],
@@ -398,7 +461,7 @@ test('a non-recoverable API error throws a sanitized EightSleepError carrying th
   });
 });
 
-test('getDeviceStatus normalises water, priming and away occupants', async () => {
+test('getDeviceStatus normalises water and priming state', async () => {
   const { client } = makeClient((url) => {
     if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
     if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
@@ -416,7 +479,19 @@ test('getDeviceStatus normalises water, priming and away occupants', async () =>
   assert.strictEqual(s.hasWater, false);
   assert.strictEqual(s.isPriming, true);
   assert.strictEqual(s.needsPriming, true);
-  assert.deepStrictEqual(s.awayUserIds, ['u1']);
+  assert.strictEqual('awayUserIds' in s, false);
+});
+
+test('getAwayMode reads the per-user away mode endpoint', async () => {
+  const { client } = makeClient((url) => {
+    if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
+    if (url.endsWith('/away-mode')) return Promise.resolve(okJson({ isAway: false }));
+    return Promise.resolve(okJson({}));
+  });
+
+  const away = await client.getAwayMode('u1');
+  assert.strictEqual(away, false);
 });
 
 test('getWeeklyAverages averages finished days and ignores processing ones', async () => {

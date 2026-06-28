@@ -3,6 +3,7 @@
   "title": {
     "en": "Sleep fitness score"
   },
+  "icon": "/assets/capabilities/sleep-fitness.svg",
   "decimals": 0,
   "getable": true,
   "setable": false,

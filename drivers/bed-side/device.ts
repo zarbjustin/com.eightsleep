@@ -44,6 +44,8 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
   private failures = 0;
 
+  private lastStateType: string | undefined;
+
   private immediateTimer: NodeJS.Timeout | null = null;
 
   private tempTimers: NodeJS.Timeout[] = [];
@@ -169,6 +171,7 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
     try {
       const state = await this.client.getSideState(this.userId());
+      this.lastStateType = state.stateType;
       await this.setCapabilityValue('onoff', state.isOn);
       await this.setCapabilityValue('target_temperature', levelToCelsius(state.currentLevel));
       await this.setCapabilityValue('measure_power', this.estimatePower(state.isOn, state.currentLevel)).catch(() => undefined);
@@ -243,6 +246,7 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
       tz,
       from: fmt(new Date(now - day)),
       to: fmt(new Date(now + day)),
+      stateType: this.lastStateType,
     });
 
     const set = async (cap: string, value: number | boolean | string | null): Promise<void> => {
@@ -322,7 +326,8 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
       this.lastPriming = status.isPriming;
     }
 
-    await set('away_mode', status.awayUserIds.includes(this.userId()));
+    const away = await this.client.getAwayMode(this.userId());
+    await set('away_mode', away);
   }
 
   /** Detect and reflect an adjustable base, adding its capabilities on demand. */

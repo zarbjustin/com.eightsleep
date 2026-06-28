@@ -3,6 +3,7 @@
   "title": {
     "en": "Sleep stage"
   },
+  "icon": "/assets/capabilities/sleep-stage.svg",
   "getable": true,
   "setable": false,
   "uiComponent": "sensor",

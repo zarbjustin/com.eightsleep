@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Away mode">
+  <g fill="none" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 45V27l20-15 20 15v18"/>
+    <path d="M20 45h24"/>
+    <path d="M28 45V32h8v13"/>
+    <path d="M47 11l6 6"/>
+    <path d="M53 11l-6 6"/>
+  </g>
+</svg>

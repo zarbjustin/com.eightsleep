@@ -3,6 +3,7 @@
   "title": {
     "en": "Time slept"
   },
+  "icon": "/assets/capabilities/time-slept.svg",
   "units": {
     "en": "h"
   },

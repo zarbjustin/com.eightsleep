@@ -3,6 +3,7 @@
   "title": {
     "en": "Base preset"
   },
+  "icon": "/assets/capabilities/base-preset.svg",
   "getable": true,
   "setable": true,
   "uiComponent": "picker",

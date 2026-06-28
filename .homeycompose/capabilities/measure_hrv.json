@@ -3,6 +3,7 @@
   "title": {
     "en": "Heart rate variability"
   },
+  "icon": "/assets/capabilities/heart-variability.svg",
   "units": {
     "en": "ms"
   },

@@ -3,6 +3,7 @@
   "title": {
     "en": "Breath rate"
   },
+  "icon": "/assets/capabilities/breath-rate.svg",
   "units": {
     "en": "/min"
   },

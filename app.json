@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.eightsleep",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "compatibility": ">=12.4.0",
   "sdk": 3,
   "runtime": "nodejs",
@@ -943,6 +943,7 @@
       "title": {
         "en": "Water low"
       },
+      "icon": "/assets/capabilities/water-low.svg",
       "getable": true,
       "setable": false,
       "uiComponent": "sensor",
@@ -953,6 +954,7 @@
       "title": {
         "en": "Away mode"
       },
+      "icon": "/assets/capabilities/away-mode.svg",
       "getable": true,
       "setable": true,
       "uiComponent": "toggle",
@@ -963,6 +965,7 @@
       "title": {
         "en": "Feet angle"
       },
+      "icon": "/assets/capabilities/base-angle.svg",
       "units": {
         "en": "°"
       },
@@ -980,6 +983,7 @@
       "title": {
         "en": "Head angle"
       },
+      "icon": "/assets/capabilities/base-angle.svg",
       "units": {
         "en": "°"
       },
@@ -997,6 +1001,7 @@
       "title": {
         "en": "Base preset"
       },
+      "icon": "/assets/capabilities/base-preset.svg",
       "getable": true,
       "setable": true,
       "uiComponent": "picker",
@@ -1032,6 +1037,7 @@
       "title": {
         "en": "Snore mitigation"
       },
+      "icon": "/assets/capabilities/snore-mitigation.svg",
       "getable": true,
       "setable": false,
       "uiComponent": "sensor",
@@ -1042,6 +1048,7 @@
       "title": {
         "en": "Priming"
       },
+      "icon": "/assets/capabilities/priming.svg",
       "getable": true,
       "setable": false,
       "uiComponent": "sensor",
@@ -1052,6 +1059,7 @@
       "title": {
         "en": "Breath rate"
       },
+      "icon": "/assets/capabilities/breath-rate.svg",
       "units": {
         "en": "/min"
       },
@@ -1066,6 +1074,7 @@
       "title": {
         "en": "Heart rate"
       },
+      "icon": "/assets/capabilities/heart-rate.svg",
       "units": {
         "en": "bpm"
       },
@@ -1080,6 +1089,7 @@
       "title": {
         "en": "Heart rate variability"
       },
+      "icon": "/assets/capabilities/heart-variability.svg",
       "units": {
         "en": "ms"
       },
@@ -1094,6 +1104,7 @@
       "title": {
         "en": "Next alarm"
       },
+      "icon": "/assets/capabilities/next-alarm.svg",
       "getable": true,
       "setable": false,
       "uiComponent": "sensor",
@@ -1104,6 +1115,7 @@
       "title": {
         "en": "Sleep fitness score"
       },
+      "icon": "/assets/capabilities/sleep-fitness.svg",
       "decimals": 0,
       "getable": true,
       "setable": false,
@@ -1115,6 +1127,7 @@
       "title": {
         "en": "Sleep fitness (7-day avg)"
       },
+      "icon": "/assets/capabilities/weekly-score.svg",
       "decimals": 1,
       "getable": true,
       "setable": false,
@@ -1126,6 +1139,7 @@
       "title": {
         "en": "Sleep quality score"
       },
+      "icon": "/assets/capabilities/sleep-quality.svg",
       "decimals": 0,
       "getable": true,
       "setable": false,
@@ -1137,6 +1151,7 @@
       "title": {
         "en": "Sleep routine score"
       },
+      "icon": "/assets/capabilities/sleep-routine.svg",
       "decimals": 0,
       "getable": true,
       "setable": false,
@@ -1148,6 +1163,7 @@
       "title": {
         "en": "Sleep stage"
       },
+      "icon": "/assets/capabilities/sleep-stage.svg",
       "getable": true,
       "setable": false,
       "uiComponent": "sensor",
@@ -1158,6 +1174,7 @@
       "title": {
         "en": "Time slept"
       },
+      "icon": "/assets/capabilities/time-slept.svg",
       "units": {
         "en": "h"
       },

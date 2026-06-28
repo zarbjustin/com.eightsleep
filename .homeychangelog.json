@@ -12,6 +12,9 @@
     "en": "Public release hardening: migrate legacy device-store credentials into app settings, remove duplicated credential storage, sanitize API error logging, and keep internal project handoff notes out of the public app repo."
   },
   "1.0.4": {
-    "en": "More reliable bed presence: presence now follows your live heart rate in real time, so 'someone got into bed' is detected sooner and stays correct if you get back into bed after Eight Sleep has marked the session as ended. Renamed the presence Flow triggers and added hints so they are easy to find when you search for 'presence'."
+    "en": "Improve bed-side reliability and presentation: Bed Presence now follows fresh heart-rate data with a short smart-state fallback, stale live biometrics are cleared instead of showing old sessions, Away Mode reads the per-user state endpoint, and custom metric icons replace Homey's placeholder icons."
+  },
+  "1.0.5": {
+    "en": "Improve bed-side reliability and presentation: Bed Presence now follows fresh heart-rate data with a short smart-state fallback, stale live biometrics are cleared instead of showing old sessions, Away Mode reads the per-user state endpoint, and custom metric icons replace Homey's placeholder icons."
   }
 }

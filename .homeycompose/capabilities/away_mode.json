@@ -3,6 +3,7 @@
   "title": {
     "en": "Away mode"
   },
+  "icon": "/assets/capabilities/away-mode.svg",
   "getable": true,
   "setable": true,
   "uiComponent": "toggle",
