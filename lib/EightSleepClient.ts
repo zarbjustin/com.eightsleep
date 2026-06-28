@@ -48,22 +48,35 @@ function lastSampleTime(arr?: Array<[string, number]>): number | null {
 }
 
 /**
- * How recent a live heart-rate sample must be to imply presence when no
- * explicit presenceStart/presenceEnd markers are available yet.
+ * How recent a live heart-rate sample must be to imply the bed is occupied.
+ * The Pod streams heart rate roughly every minute while someone is on the bed,
+ * so this is the primary real-time presence signal. Once samples stop arriving
+ * (the sleeper left), presence drops after this window elapses.
  */
 const PRESENCE_HR_FALLBACK_MS = 15 * 60 * 1000;
 
 /**
- * Determine whether someone is currently in bed. Prefers the explicit
- * presenceStart/presenceEnd markers from the trend day; falls back to a recent
- * live heart-rate sample. Returns false (not null) when there is no evidence of
- * presence so the "bed empty" trigger can fire.
+ * Determine whether someone is currently in bed.
  *
- * When both markers are present the most recent one wins: a presenceStart that
- * is newer than (or equal to) presenceEnd means the sleeper got back into bed
- * after an earlier exit, so presence is still true.
+ * A recent live heart-rate sample is the PRIMARY, real-time signal: the Pod
+ * streams heart rate roughly every minute while anyone is on the bed (even lying
+ * awake), so a fresh sample is the most reliable "is someone in bed right now"
+ * indicator. This mirrors Eight Sleep's own clients (e.g. pyEight), which derive
+ * bed presence purely from recent heart-rate recency.
+ *
+ * The processed presenceStart/presenceEnd markers lag the live data and can mark
+ * a session "ended" while the sleeper is still in bed, so they are only used as a
+ * fallback when there is no recent heart-rate sample. When both markers are
+ * present the most recent one wins: a presenceStart newer than (or equal to)
+ * presenceEnd means the sleeper got back into bed after an earlier exit.
+ *
+ * Returns false (not null) when there is no evidence of presence so the
+ * "bed empty" trigger can fire.
  */
 function computePresence(day: TrendDay, ts: { heartRate?: Array<[string, number]> }, now: number): boolean {
+  const hrTime = lastSampleTime(ts.heartRate);
+  if (hrTime !== null && now - hrTime <= PRESENCE_HR_FALLBACK_MS) return true;
+
   const start = day.presenceStart ? Date.parse(day.presenceStart) : NaN;
   const end = day.presenceEnd ? Date.parse(day.presenceEnd) : NaN;
   const hasStart = Number.isFinite(start);
@@ -72,9 +85,6 @@ function computePresence(day: TrendDay, ts: { heartRate?: Array<[string, number]
   if (hasStart && hasEnd) return start >= end;
   if (hasEnd) return false;
   if (hasStart) return true;
-
-  const hrTime = lastSampleTime(ts.heartRate);
-  if (hrTime !== null) return now - hrTime <= PRESENCE_HR_FALLBACK_MS;
   return false;
 }
 

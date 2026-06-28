@@ -214,6 +214,50 @@ test('getSideMetrics reports present again when presenceStart is newer than pres
   assert.strictEqual(m.bedPresence, true);
 });
 
+test('getSideMetrics reports present when heart rate is live even though presenceEnd is set', async () => {
+  // Real-world bug (Jeff's report): Eight Sleep writes a session presenceEnd that
+  // lags the live data, but the Pod keeps streaming heart rate while the sleeper
+  // is still in bed. A recent heart-rate sample must win over the stale marker.
+  const now = Date.parse('2026-06-20T07:00:00.000Z');
+  const trends = {
+    days: [{
+      score: 80,
+      presenceStart: '2026-06-19T23:00:00.000Z',
+      presenceEnd: '2026-06-20T06:30:00.000Z',
+      sessions: [{ timeseries: { heartRate: [['2026-06-19T23:05:00.000Z', 60], ['2026-06-20T06:58:00.000Z', 58]] }, stages: [{ stage: 'light' }] }],
+    }],
+  };
+  const { client } = makeClient((url) => {
+    if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
+    if (url.includes('/trends')) return Promise.resolve(okJson(trends));
+    return Promise.resolve(okJson({}));
+  }, { now: () => now });
+  const m = await client.getSideMetrics('u1', { tz: 'UTC', from: '2026-06-18', to: '2026-06-20' });
+  assert.strictEqual(m.bedPresence, true);
+});
+
+test('getSideMetrics reports bed empty when the last heart-rate sample is stale', async () => {
+  // No live heart rate for over the presence window and no active markers -> empty.
+  const now = Date.parse('2026-06-20T07:00:00.000Z');
+  const trends = {
+    days: [{
+      score: 80,
+      presenceStart: '2026-06-19T23:00:00.000Z',
+      presenceEnd: '2026-06-20T06:30:00.000Z',
+      sessions: [{ timeseries: { heartRate: [['2026-06-20T06:00:00.000Z', 55]] }, stages: [{ stage: 'awake' }] }],
+    }],
+  };
+  const { client } = makeClient((url) => {
+    if (url.endsWith('/v1/tokens')) return Promise.resolve(okJson({ access_token: 't1', expires_in: 3600 }));
+    if (url.endsWith('/users/me')) return Promise.resolve(okJson({ user: { userId: 'u1' } }));
+    if (url.includes('/trends')) return Promise.resolve(okJson(trends));
+    return Promise.resolve(okJson({}));
+  }, { now: () => now });
+  const m = await client.getSideMetrics('u1', { tz: 'UTC', from: '2026-06-18', to: '2026-06-20' });
+  assert.strictEqual(m.bedPresence, false);
+});
+
 test('getSideMetrics ignores a trailing empty trend day and reads the active one', async () => {
   // The API can return an empty placeholder "tomorrow" day. Selecting it would
   // wrongly report the bed as empty while the real night sits in the prior day.

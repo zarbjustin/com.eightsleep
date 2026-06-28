@@ -10,5 +10,8 @@
   },
   "1.0.3": {
     "en": "Public release hardening: migrate legacy device-store credentials into app settings, remove duplicated credential storage, sanitize API error logging, and keep internal project handoff notes out of the public app repo."
+  },
+  "1.0.4": {
+    "en": "More reliable bed presence: presence now follows your live heart rate in real time, so 'someone got into bed' is detected sooner and stays correct if you get back into bed after Eight Sleep has marked the session as ended. Renamed the presence Flow triggers and added hints so they are easy to find when you search for 'presence'."
   }
 }
