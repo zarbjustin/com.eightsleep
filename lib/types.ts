@@ -74,8 +74,21 @@ export interface TrendDay {
   processing?: boolean;
   sleepQualityScore?: {
     total?: number;
-    hrv?: { current?: number };
-    respiratoryRate?: { current?: number };
+    heartRate?: {
+      current?: number;
+      average?: number;
+      inclusive7DayAverage?: number;
+    };
+    hrv?: {
+      current?: number;
+      average?: number;
+      inclusive7DayAverage?: number;
+    };
+    respiratoryRate?: {
+      current?: number;
+      average?: number;
+      inclusive7DayAverage?: number;
+    };
   };
   sleepRoutineScore?: { total?: number };
   sessions?: TrendSession[];
@@ -84,9 +97,16 @@ export interface TrendDay {
 /** Normalised per-side biometric + sleep metrics derived from trend data. */
 export interface SideMetrics {
   bedPresence: boolean | null;
+  presenceReason: string;
+  heartRateSampleAgeMinutes: number | null;
+  heartRateSampleAt: string | null;
   heartRate: number | null;
+  restingHeartRate: number | null;
+  restingHeartRateWeekly: number | null;
   hrv: number | null;
+  hrvWeekly: number | null;
   breathRate: number | null;
+  breathRateWeekly: number | null;
   roomTemp: number | null;
   bedTemp: number | null;
   sleepStage: string | null;
@@ -101,6 +121,17 @@ export interface SideMetricsOptions {
   from: string;
   to: string;
   stateType?: string;
+}
+
+export interface WeeklyAverages {
+  days: number;
+  fitness: number | null;
+  quality: number | null;
+  routine: number | null;
+  hours: number | null;
+  restingHeartRate: number | null;
+  hrv: number | null;
+  breathRate: number | null;
 }
 
 /** A single alarm as returned by the v2 alarms endpoint. */

@@ -1,0 +1,15 @@
+{
+  "type": "number",
+  "title": {
+    "en": "Breath rate (7-day avg)"
+  },
+  "icon": "/assets/capabilities/breath-rate.svg",
+  "units": {
+    "en": "/min"
+  },
+  "decimals": 1,
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "insights": true
+}

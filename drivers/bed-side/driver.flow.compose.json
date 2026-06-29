@@ -124,7 +124,10 @@
         { "name": "avg_fitness", "type": "number", "title": { "en": "Avg fitness score" }, "example": 80 },
         { "name": "avg_quality", "type": "number", "title": { "en": "Avg quality score" }, "example": 85 },
         { "name": "avg_routine", "type": "number", "title": { "en": "Avg routine score" }, "example": 75 },
-        { "name": "avg_hours", "type": "number", "title": { "en": "Avg hours slept" }, "example": 7.4 }
+        { "name": "avg_hours", "type": "number", "title": { "en": "Avg hours slept" }, "example": 7.4 },
+        { "name": "avg_resting_heart_rate", "type": "number", "title": { "en": "Avg resting heart rate" }, "example": 73 },
+        { "name": "avg_hrv", "type": "number", "title": { "en": "Avg HRV" }, "example": 39 },
+        { "name": "avg_breath_rate", "type": "number", "title": { "en": "Avg breath rate" }, "example": 14.3 }
       ]
     }
   ],

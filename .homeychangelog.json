@@ -16,5 +16,8 @@
   },
   "1.0.5": {
     "en": "Improve bed-side reliability and presentation: Bed Presence now follows fresh heart-rate data with a short smart-state fallback, stale live biometrics are cleared instead of showing old sessions, Away Mode reads the per-user state endpoint, and custom metric icons replace Homey's placeholder icons."
+  },
+  "1.0.6": {
+    "en": "Improve Eight Sleep data accuracy and Insights: separate live heart rate from processed resting heart rate, add 7-day average sleep-health metrics, add quiet presence diagnostics, and refresh the bedside widget with clearer sleep and maintenance status."
   }
 }

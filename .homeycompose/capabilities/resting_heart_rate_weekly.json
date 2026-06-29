@@ -1,15 +1,15 @@
 {
   "type": "number",
   "title": {
-    "en": "Heart rate (live)"
+    "en": "Resting heart rate (7-day avg)"
   },
-  "icon": "/assets/capabilities/heart-rate.svg",
+  "icon": "/assets/capabilities/weekly-score.svg",
   "units": {
     "en": "bpm"
   },
-  "decimals": 0,
+  "decimals": 1,
   "getable": true,
   "setable": false,
   "uiComponent": "sensor",
-  "insights": false
+  "insights": true
 }

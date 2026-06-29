@@ -1,7 +1,7 @@
 {
   "type": "number",
   "title": {
-    "en": "Heart rate (live)"
+    "en": "Resting heart rate"
   },
   "icon": "/assets/capabilities/heart-rate.svg",
   "units": {
@@ -11,5 +11,5 @@
   "getable": true,
   "setable": false,
   "uiComponent": "sensor",
-  "insights": false
+  "insights": true
 }

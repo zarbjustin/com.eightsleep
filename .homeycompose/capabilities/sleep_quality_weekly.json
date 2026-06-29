@@ -1,0 +1,12 @@
+{
+  "type": "number",
+  "title": {
+    "en": "Sleep quality (7-day avg)"
+  },
+  "icon": "/assets/capabilities/weekly-score.svg",
+  "decimals": 1,
+  "getable": true,
+  "setable": false,
+  "uiComponent": "sensor",
+  "insights": true
+}

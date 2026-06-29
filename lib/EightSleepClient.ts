@@ -17,7 +17,9 @@ import {
 } from './constants';
 import { RateLimiter } from './RateLimiter';
 import type {
-  BaseSideData, BaseSummary, BedSideRef, EightSleepAlarm, EightSleepConfig, FetchFn, FetchResponse, HttpMethod, OneOffAlarmOptions, SideMetrics, SideMetricsOptions, Token, TrendDay, TrendSession,
+  BaseSideData, BaseSummary, BedSideRef, EightSleepAlarm, EightSleepConfig,
+  FetchFn, FetchResponse, HttpMethod, OneOffAlarmOptions, SideMetrics,
+  SideMetricsOptions, Token, TrendDay, TrendSession, WeeklyAverages,
 } from './types';
 
 /** Error thrown for any non-recoverable API failure. */
@@ -57,6 +59,13 @@ const PRESENCE_HR_FRESH_MS = 10 * 60 * 1000;
 
 const PRESENCE_HR_STALE_FALLBACK_MS = 30 * 60 * 1000;
 
+interface PresenceSummary {
+  present: boolean;
+  reason: string;
+  heartRateSampleAgeMinutes: number | null;
+  heartRateSampleAt: string | null;
+}
+
 /**
  * Determine whether someone is currently in bed.
  *
@@ -80,12 +89,30 @@ function computePresence(
   ts: { heartRate?: Array<[string, number]> },
   now: number,
   stateType?: string,
-): boolean {
+): PresenceSummary {
+  const hrAt = Array.isArray(ts.heartRate) && ts.heartRate.length > 0
+    ? ts.heartRate[ts.heartRate.length - 1]?.[0] ?? null
+    : null;
   const hrTime = lastSampleTime(ts.heartRate);
   if (hrTime !== null) {
     const age = now - hrTime;
-    if (age <= PRESENCE_HR_FRESH_MS) return true;
-    if (age <= PRESENCE_HR_STALE_FALLBACK_MS && stateType?.startsWith('smart:')) return true;
+    const ageMinutes = Math.max(0, Math.round(age / 60000));
+    if (age <= PRESENCE_HR_FRESH_MS) {
+      return {
+        present: true,
+        reason: 'fresh_heart_rate',
+        heartRateSampleAgeMinutes: ageMinutes,
+        heartRateSampleAt: hrAt,
+      };
+    }
+    if (age <= PRESENCE_HR_STALE_FALLBACK_MS && stateType?.startsWith('smart:')) {
+      return {
+        present: true,
+        reason: 'recent_heart_rate_smart_state',
+        heartRateSampleAgeMinutes: ageMinutes,
+        heartRateSampleAt: hrAt,
+      };
+    }
   }
 
   const start = day.presenceStart ? Date.parse(day.presenceStart) : NaN;
@@ -93,10 +120,38 @@ function computePresence(
   const hasStart = Number.isFinite(start);
   const hasEnd = Number.isFinite(end);
 
-  if (hasStart && hasEnd) return start >= end;
-  if (hasEnd) return false;
-  if (hasStart) return true;
-  return false;
+  const ageMinutes = hrTime === null ? null : Math.max(0, Math.round((now - hrTime) / 60000));
+  if (hasStart && hasEnd) {
+    const present = start >= end;
+    return {
+      present,
+      reason: present ? 'presence_start_after_end' : 'presence_end_after_start',
+      heartRateSampleAgeMinutes: ageMinutes,
+      heartRateSampleAt: hrAt,
+    };
+  }
+  if (hasEnd) {
+    return {
+      present: false,
+      reason: 'presence_ended',
+      heartRateSampleAgeMinutes: ageMinutes,
+      heartRateSampleAt: hrAt,
+    };
+  }
+  if (hasStart) {
+    return {
+      present: true,
+      reason: 'presence_started',
+      heartRateSampleAgeMinutes: ageMinutes,
+      heartRateSampleAt: hrAt,
+    };
+  }
+  return {
+    present: false,
+    reason: hrTime === null ? 'no_presence_signal' : 'stale_heart_rate',
+    heartRateSampleAgeMinutes: ageMinutes,
+    heartRateSampleAt: hrAt,
+  };
 }
 
 /**
@@ -135,9 +190,16 @@ function latestStage(session?: TrendSession): string | null {
 function emptyMetrics(): SideMetrics {
   return {
     bedPresence: null,
+    presenceReason: 'no_trend_data',
+    heartRateSampleAgeMinutes: null,
+    heartRateSampleAt: null,
     heartRate: null,
+    restingHeartRate: null,
+    restingHeartRateWeekly: null,
     hrv: null,
+    hrvWeekly: null,
     breathRate: null,
+    breathRateWeekly: null,
     roomTemp: null,
     bedTemp: null,
     sleepStage: null,
@@ -446,6 +508,7 @@ export class EightSleepClient {
 
     const heartRate = lastSample(ts.heartRate);
     const hasRecentLiveData = isRecentSample(ts.heartRate, now);
+    const presence = computePresence(day, ts, now, opts.stateType);
 
     // While Eight Sleep is still processing the night, scores can be partial or
     // zero — withhold them (return null) rather than logging garbage.
@@ -453,10 +516,17 @@ export class EightSleepClient {
     const score = (value: unknown): number | null => (processing ? null : numOrNull(value));
 
     return {
-      bedPresence: computePresence(day, ts, now, opts.stateType),
+      bedPresence: presence.present,
+      presenceReason: presence.reason,
+      heartRateSampleAgeMinutes: presence.heartRateSampleAgeMinutes,
+      heartRateSampleAt: presence.heartRateSampleAt,
       heartRate: hasRecentLiveData ? heartRate : null,
+      restingHeartRate: numOrNull(day.sleepQualityScore?.heartRate?.current),
+      restingHeartRateWeekly: numOrNull(day.sleepQualityScore?.heartRate?.inclusive7DayAverage),
       hrv: numOrNull(day.sleepQualityScore?.hrv?.current),
+      hrvWeekly: numOrNull(day.sleepQualityScore?.hrv?.inclusive7DayAverage),
       breathRate: numOrNull(day.sleepQualityScore?.respiratoryRate?.current),
+      breathRateWeekly: numOrNull(day.sleepQualityScore?.respiratoryRate?.inclusive7DayAverage),
       roomTemp: lastSample(ts.tempRoomC),
       bedTemp: lastSample(ts.tempBedC),
       sleepStage: hasRecentLiveData ? latestStage(session) : null,
@@ -630,9 +700,7 @@ export class EightSleepClient {
   }
 
   /** Average sleep scores over the returned trend window (ignoring still-processing days). */
-  async getWeeklyAverages(userId: string, opts: { tz: string; from: string; to: string }): Promise<{
-    fitness: number | null; quality: number | null; routine: number | null; hours: number | null; days: number;
-  }> {
+  async getWeeklyAverages(userId: string, opts: { tz: string; from: string; to: string }): Promise<WeeklyAverages> {
     const days = (await this.getTrends(userId, opts)).filter((d) => d.processing !== true);
     const nums = (sel: (d: TrendDay) => unknown): number[] => days
       .map(sel)
@@ -646,6 +714,9 @@ export class EightSleepClient {
       quality: avg(nums((d) => d.sleepQualityScore?.total)),
       routine: avg(nums((d) => d.sleepRoutineScore?.total)),
       hours: avg(hours),
+      restingHeartRate: avg(nums((d) => d.sleepQualityScore?.heartRate?.current)),
+      hrv: avg(nums((d) => d.sleepQualityScore?.hrv?.current)),
+      breathRate: avg(nums((d) => d.sleepQualityScore?.respiratoryRate?.current)),
       days: days.length,
     };
   }

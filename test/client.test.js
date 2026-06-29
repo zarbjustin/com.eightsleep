@@ -141,8 +141,9 @@ test('getSideMetrics parses biometrics and sleep scores from the latest trend da
         presenceStart: '2026-06-19T23:00:00.000Z',
         sleepQualityScore: {
           total: 90,
-          hrv: { current: 55 },
-          respiratoryRate: { current: 14.2 },
+          heartRate: { current: 74, inclusive7DayAverage: 73.1 },
+          hrv: { current: 55, inclusive7DayAverage: 52.3 },
+          respiratoryRate: { current: 14.2, inclusive7DayAverage: 14.7 },
         },
         sleepRoutineScore: { total: 75 },
         sessions: [
@@ -167,8 +168,12 @@ test('getSideMetrics parses biometrics and sleep scores from the latest trend da
 
   const m = await client.getSideMetrics('u1', { tz: 'Europe/London', from: '2026-06-18', to: '2026-06-20' });
   assert.strictEqual(m.heartRate, 58);
+  assert.strictEqual(m.restingHeartRate, 74);
+  assert.strictEqual(m.restingHeartRateWeekly, 73.1);
   assert.strictEqual(m.hrv, 55);
+  assert.strictEqual(m.hrvWeekly, 52.3);
   assert.strictEqual(m.breathRate, 14.2);
+  assert.strictEqual(m.breathRateWeekly, 14.7);
   assert.strictEqual(m.roomTemp, 20.5);
   assert.strictEqual(m.bedTemp, 30.1);
   assert.strictEqual(m.sleepStage, 'deep');
@@ -177,6 +182,9 @@ test('getSideMetrics parses biometrics and sleep scores from the latest trend da
   assert.strictEqual(m.sleepRoutineScore, 75);
   assert.strictEqual(m.timeSleptSeconds, 27000);
   assert.strictEqual(m.bedPresence, true);
+  assert.strictEqual(m.presenceReason, 'fresh_heart_rate');
+  assert.strictEqual(m.heartRateSampleAgeMinutes, 2);
+  assert.strictEqual(m.heartRateSampleAt, '2026-06-20T06:58:00.000Z');
 });
 
 test('getSideMetrics reports bed empty (false) once presence has ended', async () => {
@@ -196,6 +204,7 @@ test('getSideMetrics reports bed empty (false) once presence has ended', async (
   });
   const m = await client.getSideMetrics('u1', { tz: 'UTC', from: '2026-06-18', to: '2026-06-20' });
   assert.strictEqual(m.bedPresence, false);
+  assert.strictEqual(m.presenceReason, 'presence_end_after_start');
 });
 
 test('getSideMetrics reports present again when presenceStart is newer than presenceEnd', async () => {
@@ -217,6 +226,7 @@ test('getSideMetrics reports present again when presenceStart is newer than pres
   });
   const m = await client.getSideMetrics('u1', { tz: 'UTC', from: '2026-06-18', to: '2026-06-20' });
   assert.strictEqual(m.bedPresence, true);
+  assert.strictEqual(m.presenceReason, 'presence_start_after_end');
 });
 
 test('getSideMetrics reports present when heart rate is live even though presenceEnd is set', async () => {
@@ -240,6 +250,7 @@ test('getSideMetrics reports present when heart rate is live even though presenc
   }, { now: () => now });
   const m = await client.getSideMetrics('u1', { tz: 'UTC', from: '2026-06-18', to: '2026-06-20' });
   assert.strictEqual(m.bedPresence, true);
+  assert.strictEqual(m.presenceReason, 'fresh_heart_rate');
 });
 
 test('getSideMetrics reports bed empty when the last heart-rate sample is stale', async () => {
@@ -271,6 +282,7 @@ test('getSideMetrics clears stale live biometrics but keeps temperature samples'
       presenceStart: '2026-06-19T23:00:00.000Z',
       presenceEnd: '2026-06-20T06:30:00.000Z',
       sleepQualityScore: {
+        heartRate: { current: 74, inclusive7DayAverage: 73.1 },
         hrv: { current: 55 },
         respiratoryRate: { current: 14.2 },
       },
@@ -292,6 +304,8 @@ test('getSideMetrics clears stale live biometrics but keeps temperature samples'
   }, { now: () => now });
   const m = await client.getSideMetrics('u1', { tz: 'UTC', from: '2026-06-18', to: '2026-06-20' });
   assert.strictEqual(m.heartRate, null);
+  assert.strictEqual(m.restingHeartRate, 74);
+  assert.strictEqual(m.restingHeartRateWeekly, 73.1);
   assert.strictEqual(m.hrv, 55);
   assert.strictEqual(m.breathRate, 14.2);
   assert.strictEqual(m.roomTemp, 20.5);
@@ -319,6 +333,7 @@ test('getSideMetrics keeps presence during a short trend lag while smart bedtime
     tz: 'UTC', from: '2026-06-18', to: '2026-06-20', stateType: 'smart:bedtime',
   });
   assert.strictEqual(m.bedPresence, true);
+  assert.strictEqual(m.presenceReason, 'recent_heart_rate_smart_state');
 });
 
 test('getSideMetrics ignores a trailing empty trend day and reads the active one', async () => {
@@ -374,6 +389,7 @@ test('getSideMetrics returns all-null metrics when there is no trend data', asyn
   const m = await client.getSideMetrics('u1', { tz: 'UTC', from: '2026-06-18', to: '2026-06-20' });
   assert.strictEqual(m.heartRate, null);
   assert.strictEqual(m.bedPresence, null);
+  assert.strictEqual(m.presenceReason, 'no_trend_data');
   assert.strictEqual(m.sleepStage, null);
 });
 
@@ -497,8 +513,28 @@ test('getAwayMode reads the per-user away mode endpoint', async () => {
 test('getWeeklyAverages averages finished days and ignores processing ones', async () => {
   const trends = {
     days: [
-      { score: 80, sleepDuration: 25200, sleepQualityScore: { total: 90 }, sleepRoutineScore: { total: 70 } },
-      { score: 90, sleepDuration: 28800, sleepQualityScore: { total: 80 }, sleepRoutineScore: { total: 80 } },
+      {
+        score: 80,
+        sleepDuration: 25200,
+        sleepQualityScore: {
+          total: 90,
+          heartRate: { current: 74 },
+          hrv: { current: 41 },
+          respiratoryRate: { current: 14.2 },
+        },
+        sleepRoutineScore: { total: 70 },
+      },
+      {
+        score: 90,
+        sleepDuration: 28800,
+        sleepQualityScore: {
+          total: 80,
+          heartRate: { current: 72 },
+          hrv: { current: 45 },
+          respiratoryRate: { current: 14.8 },
+        },
+        sleepRoutineScore: { total: 80 },
+      },
       { processing: true, score: 0, sleepDuration: 0 },
     ],
   };
@@ -515,4 +551,7 @@ test('getWeeklyAverages averages finished days and ignores processing ones', asy
   assert.strictEqual(a.quality, 85);
   assert.strictEqual(a.routine, 75);
   assert.strictEqual(a.hours, 7.5);
+  assert.strictEqual(a.restingHeartRate, 73);
+  assert.strictEqual(a.hrv, 43);
+  assert.strictEqual(a.breathRate, 14.5);
 });

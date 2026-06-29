@@ -1,7 +1,7 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "com.eightsleep",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "compatibility": ">=12.4.0",
   "sdk": 3,
   "runtime": "nodejs",
@@ -379,6 +379,30 @@
               "en": "Avg hours slept"
             },
             "example": 7.4
+          },
+          {
+            "name": "avg_resting_heart_rate",
+            "type": "number",
+            "title": {
+              "en": "Avg resting heart rate"
+            },
+            "example": 73
+          },
+          {
+            "name": "avg_hrv",
+            "type": "number",
+            "title": {
+              "en": "Avg HRV"
+            },
+            "example": 39
+          },
+          {
+            "name": "avg_breath_rate",
+            "type": "number",
+            "title": {
+              "en": "Avg breath rate"
+            },
+            "example": 14.3
           }
         ],
         "args": [
@@ -737,14 +761,21 @@
         "measure_temperature.room",
         "alarm_presence",
         "measure_heart_rate",
+        "resting_heart_rate",
+        "resting_heart_rate_weekly",
         "measure_hrv",
+        "measure_hrv_weekly",
         "measure_breath_rate",
+        "measure_breath_rate_weekly",
         "sleep_stage",
         "sleep_fitness_score",
-        "sleep_quality_score",
-        "sleep_routine_score",
-        "time_slept",
         "sleep_fitness_weekly",
+        "sleep_quality_score",
+        "sleep_quality_weekly",
+        "sleep_routine_score",
+        "sleep_routine_weekly",
+        "time_slept",
+        "time_slept_weekly",
         "measure_power",
         "next_alarm",
         "away_mode",
@@ -1069,10 +1100,25 @@
       "uiComponent": "sensor",
       "insights": true
     },
+    "measure_breath_rate_weekly": {
+      "type": "number",
+      "title": {
+        "en": "Breath rate (7-day avg)"
+      },
+      "icon": "/assets/capabilities/breath-rate.svg",
+      "units": {
+        "en": "/min"
+      },
+      "decimals": 1,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true
+    },
     "measure_heart_rate": {
       "type": "number",
       "title": {
-        "en": "Heart rate"
+        "en": "Heart rate (live)"
       },
       "icon": "/assets/capabilities/heart-rate.svg",
       "units": {
@@ -1082,7 +1128,7 @@
       "getable": true,
       "setable": false,
       "uiComponent": "sensor",
-      "insights": true
+      "insights": false
     },
     "measure_hrv": {
       "type": "number",
@@ -1099,6 +1145,21 @@
       "uiComponent": "sensor",
       "insights": true
     },
+    "measure_hrv_weekly": {
+      "type": "number",
+      "title": {
+        "en": "HRV (7-day avg)"
+      },
+      "icon": "/assets/capabilities/heart-variability.svg",
+      "units": {
+        "en": "ms"
+      },
+      "decimals": 1,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true
+    },
     "next_alarm": {
       "type": "string",
       "title": {
@@ -1109,6 +1170,36 @@
       "setable": false,
       "uiComponent": "sensor",
       "insights": false
+    },
+    "resting_heart_rate": {
+      "type": "number",
+      "title": {
+        "en": "Resting heart rate"
+      },
+      "icon": "/assets/capabilities/heart-rate.svg",
+      "units": {
+        "en": "bpm"
+      },
+      "decimals": 0,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true
+    },
+    "resting_heart_rate_weekly": {
+      "type": "number",
+      "title": {
+        "en": "Resting heart rate (7-day avg)"
+      },
+      "icon": "/assets/capabilities/weekly-score.svg",
+      "units": {
+        "en": "bpm"
+      },
+      "decimals": 1,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true
     },
     "sleep_fitness_score": {
       "type": "number",
@@ -1146,6 +1237,18 @@
       "uiComponent": "sensor",
       "insights": true
     },
+    "sleep_quality_weekly": {
+      "type": "number",
+      "title": {
+        "en": "Sleep quality (7-day avg)"
+      },
+      "icon": "/assets/capabilities/weekly-score.svg",
+      "decimals": 1,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true
+    },
     "sleep_routine_score": {
       "type": "number",
       "title": {
@@ -1153,6 +1256,18 @@
       },
       "icon": "/assets/capabilities/sleep-routine.svg",
       "decimals": 0,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true
+    },
+    "sleep_routine_weekly": {
+      "type": "number",
+      "title": {
+        "en": "Sleep routine (7-day avg)"
+      },
+      "icon": "/assets/capabilities/weekly-score.svg",
+      "decimals": 1,
       "getable": true,
       "setable": false,
       "uiComponent": "sensor",
@@ -1175,6 +1290,21 @@
         "en": "Time slept"
       },
       "icon": "/assets/capabilities/time-slept.svg",
+      "units": {
+        "en": "h"
+      },
+      "decimals": 1,
+      "getable": true,
+      "setable": false,
+      "uiComponent": "sensor",
+      "insights": true
+    },
+    "time_slept_weekly": {
+      "type": "number",
+      "title": {
+        "en": "Time slept (7-day avg)"
+      },
+      "icon": "/assets/capabilities/weekly-score.svg",
       "units": {
         "en": "h"
       },

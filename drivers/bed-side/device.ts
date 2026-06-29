@@ -28,6 +28,8 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
   private lastPresence: boolean | null = null;
 
+  private lastPresenceDiagnostic: string | null = null;
+
   private lastStage: string | null = null;
 
   private lastRinging: boolean | null = null;
@@ -52,10 +54,12 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
   private static readonly CAPABILITIES = [
     'onoff', 'target_temperature', 'measure_temperature', 'measure_temperature.room',
-    'alarm_presence', 'measure_heart_rate', 'measure_hrv', 'measure_breath_rate',
-    'sleep_stage', 'sleep_fitness_score', 'sleep_quality_score', 'sleep_routine_score', 'time_slept',
-    'time_slept', 'sleep_fitness_weekly', 'measure_power',
-    'next_alarm', 'away_mode', 'alarm_water_low', 'is_priming',
+    'alarm_presence', 'measure_heart_rate', 'resting_heart_rate', 'resting_heart_rate_weekly',
+    'measure_hrv', 'measure_hrv_weekly', 'measure_breath_rate', 'measure_breath_rate_weekly',
+    'sleep_stage', 'sleep_fitness_score', 'sleep_fitness_weekly',
+    'sleep_quality_score', 'sleep_quality_weekly', 'sleep_routine_score', 'sleep_routine_weekly',
+    'time_slept', 'time_slept_weekly', 'measure_power',
+    'next_alarm', 'alarm_water_low', 'is_priming', 'away_mode',
     'button.alarm_snooze', 'button.alarm_stop', 'button.prime',
   ];
 
@@ -255,8 +259,12 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
     await set('alarm_presence', m.bedPresence);
     await set('measure_heart_rate', m.heartRate);
+    await set('resting_heart_rate', m.restingHeartRate);
+    await set('resting_heart_rate_weekly', m.restingHeartRateWeekly);
     await set('measure_hrv', m.hrv);
+    await set('measure_hrv_weekly', m.hrvWeekly);
     await set('measure_breath_rate', m.breathRate);
+    await set('measure_breath_rate_weekly', m.breathRateWeekly);
     await set('measure_temperature', m.bedTemp);
     await set('measure_temperature.room', m.roomTemp);
     await set('sleep_stage', m.sleepStage);
@@ -265,8 +273,22 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
     await set('sleep_routine_score', m.sleepRoutineScore);
     await set('time_slept', m.timeSleptSeconds === null ? null : Math.round((m.timeSleptSeconds / 3600) * 10) / 10);
 
+    this.logPresenceDiagnostic(m);
     await this.fireStateTriggers(m);
     await this.refreshNextAlarm(set);
+  }
+
+  private logPresenceDiagnostic(m: SideMetrics): void {
+    const signature = [
+      `present=${m.bedPresence}`,
+      `reason=${m.presenceReason}`,
+      `hrAt=${m.heartRateSampleAt ?? 'none'}`,
+      `state=${this.lastStateType ?? 'unknown'}`,
+    ].join(' ');
+    if (signature !== this.lastPresenceDiagnostic) {
+      this.log(`Presence diagnostic (${this.getName()}): ${signature} hrAgeMin=${m.heartRateSampleAgeMinutes ?? 'none'}`);
+      this.lastPresenceDiagnostic = signature;
+    }
   }
 
   /** Helper to fire a device trigger card, swallowing errors. */
@@ -293,6 +315,12 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
 
     await this.setStoreValue('lastSummaryDate', today).catch(() => undefined);
     await this.setCapabilityValue('sleep_fitness_weekly', avg.fitness).catch(() => undefined);
+    await this.setCapabilityValue('sleep_quality_weekly', avg.quality).catch(() => undefined);
+    await this.setCapabilityValue('sleep_routine_weekly', avg.routine).catch(() => undefined);
+    await this.setCapabilityValue('time_slept_weekly', avg.hours).catch(() => undefined);
+    await this.setCapabilityValue('resting_heart_rate_weekly', avg.restingHeartRate).catch(() => undefined);
+    await this.setCapabilityValue('measure_hrv_weekly', avg.hrv).catch(() => undefined);
+    await this.setCapabilityValue('measure_breath_rate_weekly', avg.breathRate).catch(() => undefined);
 
     if (prev) {
       await this.fire('weekly_summary', {
@@ -300,6 +328,9 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
         avg_quality: avg.quality ?? 0,
         avg_routine: avg.routine ?? 0,
         avg_hours: avg.hours ?? 0,
+        avg_resting_heart_rate: avg.restingHeartRate ?? 0,
+        avg_hrv: avg.hrv ?? 0,
+        avg_breath_rate: avg.breathRate ?? 0,
       });
     }
   }
@@ -569,20 +600,29 @@ module.exports = class EightSleepBedSideDevice extends Homey.Device {
   /** Snapshot of the side's state for the dashboard widget. */
   getWidgetState(): {
     name: string; on: boolean; target: number | null; bedTemp: number | null;
-    presence: boolean; heartRate: number | null; stage: string | null;
-    nextAlarm: string | null; away: boolean; waterLow: boolean; units: string;
+    roomTemp: number | null; presence: boolean; heartRate: number | null;
+    restingHeartRate: number | null; hrv: number | null; breathRate: number | null;
+    stage: string | null; sleepFitness: number | null; timeSlept: number | null;
+    nextAlarm: string | null; away: boolean; waterLow: boolean; priming: boolean; units: string;
     } {
     return {
       name: this.getName(),
       on: this.getCapabilityValue('onoff') === true,
       target: this.getCapabilityValue('target_temperature') ?? null,
       bedTemp: this.getCapabilityValue('measure_temperature') ?? null,
+      roomTemp: this.getCapabilityValue('measure_temperature.room') ?? null,
       presence: this.getCapabilityValue('alarm_presence') === true,
       heartRate: this.getCapabilityValue('measure_heart_rate') ?? null,
+      restingHeartRate: this.getCapabilityValue('resting_heart_rate') ?? null,
+      hrv: this.getCapabilityValue('measure_hrv') ?? null,
+      breathRate: this.getCapabilityValue('measure_breath_rate') ?? null,
       stage: this.getCapabilityValue('sleep_stage') ?? null,
+      sleepFitness: this.getCapabilityValue('sleep_fitness_score') ?? null,
+      timeSlept: this.getCapabilityValue('time_slept') ?? null,
       nextAlarm: this.getCapabilityValue('next_alarm') ?? null,
       away: this.getCapabilityValue('away_mode') === true,
       waterLow: this.getCapabilityValue('alarm_water_low') === true,
+      priming: this.getCapabilityValue('is_priming') === true,
       units: (this.getSetting('display_units') as string) || 'C',
     };
   }
